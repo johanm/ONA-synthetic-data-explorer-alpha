@@ -2167,7 +2167,7 @@ async function pingHome(net) {
   try {
     const {nodes, edges, scenarioId, topology, templateId, activeLayers, metrics, event_override} = net;
     const params = new URLSearchParams({
-      app:          'ona-benchmark',
+      app:          'ona-benchmark-v5',
       event:        event_override || 'network_generated',
       scenario:     scenarioId,
       topology:     topology,
@@ -3481,7 +3481,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try { ipData = await (await fetch('https://ipapi.co/json/')).json(); } catch (_) {}
     try {
       fetch(`${PING_URL}?${new URLSearchParams({
-        app:      'ona-benchmark',
+        app:      'ona-benchmark-v5',
         event:    'app_opened',
         lang:     navigator.language,
         tz:       Intl.DateTimeFormat().resolvedOptions().timeZone,
