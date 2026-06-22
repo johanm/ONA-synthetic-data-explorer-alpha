@@ -1,0 +1,3619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ONA Synthetic Benchmark Generator v5 — Realistic Network Data</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+/* ── TOKENS ─────────────────────────────────────────────────────── */
+:root {
+  --bg:        #f8f7f4;   /* page background */
+  --surf0:     #f0ede8;   /* header / sidebar */
+  --surf1:     #e8e4de;   /* cards / panels */
+  --surf2:     #dedad3;   /* inputs */
+  --surf3:     #d4cfc7;   /* hover */
+  --border:    #d4cfc7;
+  --border-hi: #bdb8b0;
+
+  --text:      #1a1714;   /* primary */
+  --text-2:    #4a4540;   /* secondary */
+  --text-3:    #7a756e;   /* muted */
+
+  --cyan:      #4f46e5;   /* indigo — primary accent (matches Slack Pulse) */
+  --cyan-dim:  #c7d2fe;   /* indigo tint for backgrounds */
+  --violet:    #7c3aed;
+  --green:     #059669;
+  --red:       #e11d48;
+  --amber:     #d97706;
+  --pink:      #db2777;
+
+  --font-ui:   'IBM Plex Mono', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --r:         6px;
+}
+
+/* ── RESET ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── LAYOUT ─────────────────────────────────────────────────────── */
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  display: grid;
+  grid-template-rows: 50px 1fr;
+  grid-template-columns: 320px 1fr;
+  grid-template-areas: "hd hd" "sb main";
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── HEADER ─────────────────────────────────────────────────────── */
+header {
+  grid-area: hd;
+  background: var(--surf0);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 20px;
+}
+.brand-link {
+  display: flex; align-items: center; gap: 10px;
+  text-decoration: none; color: inherit; flex-shrink: 0;
+  padding-right: 16px; border-right: 1px solid var(--border);
+}
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--cyan) 0%, #0d9488 100%);
+  display: flex; align-items: center; justify-content: center;
+}
+.brand-mark svg { width: 15px; height: 15px; fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.brand-name {
+  font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600;
+  letter-spacing: -0.03em; color: var(--text); line-height: 1.15;
+}
+.brand-name em { color: var(--text-3); font-style: normal; font-weight: 400; }
+.brand-by {
+  font-size: 10px; color: var(--text-3); text-decoration: none;
+  letter-spacing: 0.01em; border-bottom: 1px solid transparent;
+  transition: color .15s, border-color .15s; display: inline-block; margin-top: 1px;
+}
+.brand-by:hover { color: var(--cyan); border-bottom-color: var(--cyan); }
+.logo { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; color: var(--text); letter-spacing: -0.03em; }
+.logo em { color: var(--text-3); font-style: normal; font-weight: 400; }
+.hd-sep { width: 1px; height: 18px; background: var(--border); }
+.hd-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+.hd-exports { margin-left: auto; display: flex; gap: 6px; }
+
+/* ── SIDEBAR ────────────────────────────────────────────────────── */
+aside {
+  grid-area: sb;
+  background: var(--surf0);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex; flex-direction: column;
+}
+aside::-webkit-scrollbar { width: 3px; }
+aside::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.sec { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.sec-label {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+  letter-spacing: 0.14em; color: var(--cyan); text-transform: uppercase;
+  margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+}
+.sec-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* ── FORM CONTROLS ──────────────────────────────────────────────── */
+.field { margin-bottom: 10px; }
+.field:last-child { margin-bottom: 0; }
+
+label {
+  display: block; font-size: 11px; font-weight: 500;
+  color: var(--text-2); margin-bottom: 5px; font-family: var(--font-mono);
+}
+
+select, input[type="number"] {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--text);
+  padding: 7px 10px;
+  font-family: var(--font-mono); font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  -webkit-appearance: none;
+}
+select:focus, input[type="number"]:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 2px rgba(79,70,229,0.12);
+}
+select option { background: var(--bg); color: var(--text); }
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.row2 .field { margin-bottom: 0; }
+
+input[type="range"] {
+  width: 100%; height: 3px; background: var(--surf2);
+  border: none; border-radius: 2px; outline: none;
+  cursor: pointer; -webkit-appearance: none; margin-top: 2px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 13px; height: 13px;
+  background: var(--cyan); border-radius: 50%; cursor: pointer;
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.15);
+}
+.rv { float: right; font-family: var(--font-mono); font-size: 11px; color: var(--cyan); font-weight: 600; }
+
+/* ── BUTTONS ────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 7px 14px; border: none; border-radius: var(--r);
+  font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+  cursor: pointer; transition: all 0.14s; white-space: nowrap;
+}
+.btn-primary {
+  background: var(--cyan); color: #fff;
+  box-shadow: 0 1px 4px rgba(79,70,229,0.25);
+}
+.btn-primary:hover { background: #4338ca; transform: translateY(-1px); }
+.btn-primary:active { transform: none; }
+
+.btn-ghost {
+  background: transparent; color: var(--text-2);
+  border: 1px solid var(--border); padding: 5px 11px;
+}
+.btn-ghost:hover { color: var(--text); border-color: var(--border-hi); background: var(--surf1); }
+.btn-ghost:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+
+.gen-btn { width: 100%; padding: 11px; font-size: 13px; letter-spacing: 0.03em; }
+
+/* ── LAYER CHIPS (generation selector) ──────────────────────────── */
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip {
+  padding: 3px 8px; border-radius: 3px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  cursor: pointer; user-select: none;
+  border: 1px solid var(--border); color: var(--text-3);
+  background: var(--bg);
+  transition: all 0.12s;
+}
+.chip.on {
+  border-color: var(--cyan); color: var(--cyan);
+  background: rgba(79,70,229,0.07);
+}
+
+/* ── STATUS BAR ──────────────────────────────────────────────────── */
+.status {
+  padding: 9px 16px; background: var(--surf1);
+  border-top: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--text-3); display: flex; align-items: center; gap: 8px;
+  min-height: 34px;
+}
+.status.run  { color: var(--amber); }
+.status.done { color: var(--green); }
+.status.err  { color: var(--red); }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.dot.pulse { animation: blink 0.9s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+/* ── INFO CARDS ──────────────────────────────────────────────────── */
+#sc-desc {
+  font-size: 11px; line-height: 1.65; color: var(--text-2);
+  padding: 9px 10px; margin-top: 8px;
+  background: var(--bg); border-radius: var(--r);
+  border-left: 2px solid var(--violet);
+}
+#sc-tags { margin-top: 8px; }
+.tag {
+  display: inline-block; margin: 2px 2px 0 0;
+  padding: 2px 7px; border-radius: 3px;
+  font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+  color: var(--violet); background: rgba(124,58,237,0.08);
+  border: 1px solid rgba(124,58,237,0.2);
+}
+
+/* ── MAIN CANVAS AREA ────────────────────────────────────────────── */
+main {
+  grid-area: main;
+  display: grid; grid-template-rows: 1fr auto;
+  overflow: hidden; background: var(--bg); position: relative;
+}
+#viz-wrap {
+  position: relative; overflow: hidden;
+  background:
+    radial-gradient(ellipse at 25% 35%, rgba(124,58,237,0.04) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 70%, rgba(79,70,229,0.03) 0%, transparent 50%),
+    var(--bg);
+}
+#viz-svg { width: 100%; height: 100%; }
+
+.empty {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 14px; pointer-events: none; opacity: 0.4;
+}
+.empty-ring {
+  width: 64px; height: 64px; border-radius: 50%;
+  border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; color: var(--text-3);
+}
+.empty p { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+
+/* ── CANVAS BUTTON GROUP ─────────────────────────────────────────── */
+#canvas-btns {
+  position: absolute; top: 12px; right: 12px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+
+/* ── METRICS FOOTER ──────────────────────────────────────────────── */
+#mbar {
+  background: var(--surf0); border-top: 1px solid var(--border);
+  padding: 8px 20px; display: flex; gap: 0; align-items: stretch;
+  overflow-x: auto; min-height: 46px;
+}
+#mbar::-webkit-scrollbar { height: 3px; }
+#mbar::-webkit-scrollbar-thumb { background: var(--border); }
+.met { display: flex; flex-direction: column; justify-content: center; padding: 0 18px; white-space: nowrap; }
+.met:first-child { padding-left: 0; }
+.met-l { font-family: var(--font-mono); font-size: 9px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 2px; }
+.met-v { font-family: var(--font-mono); font-size: 13px; color: var(--cyan); font-weight: 600; }
+.msep { width: 1px; background: var(--border); flex-shrink: 0; margin: 4px 0; }
+
+/* ── OVERLAYS ────────────────────────────────────────────────────── */
+.overlay {
+  position: absolute; background: rgba(240,237,232,0.96);
+  border: 1px solid var(--border); border-radius: var(--r);
+  padding: 12px 14px; font-family: var(--font-mono); font-size: 10px;
+  backdrop-filter: blur(10px); z-index: 6;
+  display: none; max-width: 290px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+}
+.overlay.show { display: block; }
+.ov-title {
+  font-size: 9px; color: var(--text-3); text-transform: uppercase;
+  letter-spacing: 0.12em; margin-bottom: 10px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.ov-close {
+  cursor: pointer; color: var(--text-3); font-size: 12px; line-height: 1;
+  padding: 0 2px;
+}
+.ov-close:hover { color: var(--text); }
+
+/* ── LAYER FILTER OVERLAY ───────────────────────────────────────── */
+#ov-layers { bottom: 54px; left: 12px; width: 275px; }
+
+.lf-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 6px 6px 8px; border-radius: 5px; cursor: pointer;
+  transition: background 0.1s; margin-bottom: 2px;
+  border: 1px solid transparent;
+  user-select: none;
+}
+.lf-row:hover { background: var(--surf2); }
+.lf-row.active { background: rgba(79,70,229,0.07); border-color: rgba(79,70,229,0.2); }
+.lf-row.hidden-layer .lf-name, .lf-row.hidden-layer .lf-count { opacity: 0.35; }
+.lf-swatch {
+  flex-shrink: 0; width: 28px; height: 10px;
+  display: flex; align-items: center;
+}
+.lf-swatch svg { overflow: visible; }
+.lf-name { flex: 1; color: var(--text); font-size: 10px; font-weight: 500; }
+.lf-badge {
+  font-size: 8px; padding: 1px 5px; border-radius: 2px;
+  font-family: var(--font-mono);
+}
+.lf-badge.dir  { background: rgba(217,119,6,0.10); color: var(--amber); border: 1px solid rgba(217,119,6,0.25); }
+.lf-badge.undir{ background: rgba(124,58,237,0.08); color: var(--violet); border: 1px solid rgba(124,58,237,0.2); }
+.lf-count { font-size: 9px; color: var(--text-2); min-width: 44px; text-align: right; font-weight: 500; }
+.lf-pct { color: var(--text-3); font-size: 8px; }
+
+/* Eye toggle */
+.lf-eye {
+  flex-shrink: 0;
+  width: 28px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surf2);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  transition: background 0.12s, border-color 0.12s;
+  position: relative; z-index: 2;
+}
+.lf-eye:hover { background: var(--surf3); border-color: var(--text-3); }
+.lf-eye.eye-on  { color: var(--text);   border-color: var(--border); }
+.lf-eye.eye-off { color: var(--text-3); background: transparent; border-color: transparent; }
+.lf-row.hidden-layer .lf-eye { color: var(--text-3); opacity: 0.5; }
+
+/* ── LEGEND OVERLAY ──────────────────────────────────────────────── */
+#ov-legend { bottom: 54px; right: 12px; max-height: 280px; overflow-y: auto; }
+.leg-swatch { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.leg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; color: var(--text-2); font-size: 10px; }
+.leg-special { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; color: var(--text-2); font-size: 10px; }
+.leg-special-icon { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── VALIDATION OVERLAY ──────────────────────────────────────────── */
+#ov-validation { top: 12px; left: 12px; }
+.val-row { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; color: var(--text-2); font-size: 10px; }
+.val-pass { color: var(--green); }
+.val-fail { color: var(--red); }
+.val-v { margin-left: auto; color: var(--text-3); font-size: 9px; }
+
+/* ── PROGRESS OVERLAY ────────────────────────────────────────────── */
+#progress {
+  position: absolute; inset: 0;
+  background: rgba(248,247,244,0.88); backdrop-filter: blur(6px);
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px; z-index: 20;
+}
+#progress.show { display: flex; }
+.spinner {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 2px solid var(--border); border-top-color: var(--cyan);
+  animation: spin 0.75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.prog-label { font-family: var(--font-mono); font-size: 13px; color: var(--cyan); }
+.prog-sub   { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); }
+
+/* ── NODE + EDGE TOOLTIPS ────────────────────────────────────────── */
+#tip-node, #tip-edge {
+  position: fixed; pointer-events: none; z-index: 1000;
+  background: var(--surf0); border: 1px solid var(--border-hi);
+  border-radius: var(--r); padding: 10px 13px;
+  font-family: var(--font-mono); font-size: 10px;
+  opacity: 0; transition: opacity 0.1s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  max-width: 230px;
+}
+#tip-node.on, #tip-edge.on { opacity: 1; }
+.tip-name { color: var(--cyan); font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+.tip-r  { display: flex; justify-content: space-between; gap: 14px; color: var(--text-2); margin-top: 3px; }
+.tip-v  { color: var(--text); font-weight: 500; }
+.tip-flag { margin-top: 4px; font-size: 10px; }
+
+/* SVG node text */
+.node text { pointer-events: none; font-family: var(--font-mono); font-size: 9px; fill: var(--text-2); }
+.link { cursor: pointer; }
+
+/* ── IMPORT MODE ─────────────────────────────────────────────────── */
+.import-mode aside .sec:not(#import-sec):not(:last-of-type) { opacity: 0.4; pointer-events: none; }
+#import-sec { border-left: 2px solid var(--green); }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ───────────────────────────────────────── -->
+<header>
+  <a class="brand-link" href="#" title="ONA Benchmark v4">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/><line x1="5" y1="19" x2="19" y2="19"/></svg>
+    </div>
+    <div>
+      <div class="brand-name">ONA<em>/</em>BENCH <em>v5</em></div>
+      <a href="https://www.linkedin.com/in/myrberger/" target="_blank" rel="noopener" class="brand-by">by Johan Myrberger ↗</a>
+    </div>
+  </a>
+  <div class="hd-sep"></div>
+  <div class="hd-sub">Synthetic ONA Generator · v5 · Structurally Plausible Network Data</div>
+  <div class="hd-exports">
+    <button class="btn btn-ghost" id="btn-gml"     disabled>⬇ GraphML</button>
+    <button class="btn btn-ghost" id="btn-ncsv"    disabled>⬇ Nodes</button>
+    <button class="btn btn-ghost" id="btn-ecsv"    disabled>⬇ Edges</button>
+    <button class="btn btn-ghost" id="btn-json"    disabled>⬇ Metrics</button>
+    <button class="btn btn-ghost" id="btn-payload" disabled>⬇ Payload</button>
+    <div class="hd-sep"></div>
+    <button class="btn btn-ghost" id="btn-import-gml" title="Import a GraphML file">⬆ Import GraphML</button>
+    <input type="file" id="file-import-gml" accept=".graphml,.xml" style="display:none">
+  </div>
+</header>
+
+<!-- ── SIDEBAR ──────────────────────────────────────── -->
+<aside>
+
+  <div class="sec">
+    <div class="sec-label">Scenario</div>
+    <div class="field">
+      <label>Scenario Pack</label>
+      <select id="sc-sel">
+        <option value="DEMO_M">DEMO_M — First Client Meeting</option>
+        <option value="CHRO_M">CHRO_M — Privacy-Safe CHRO Pilot</option>
+        <option value="REORG_M">REORG_M — Internal Change Agent Reorg Lab</option>
+        <option value="RESEARCH_SM">RESEARCH_SM — Reproducible Research Benchmark</option>
+        <option value="DEV_S">DEV_S — Tool Builder Integration Pack</option>
+        <option value="AI_M">AI_M — AI Adoption &amp; Human-Agent Model</option>
+        <option value="RESIZE_M">RESIZE_M — Restructuring &amp; Delayering</option>
+        <option value="MA_M">MA_M — Post-Merger Integration</option>
+        <option value="CULTURE_M">CULTURE_M — Culture Change &amp; Collab Reset</option>
+        <option value="SUCCESSION_M">SUCCESSION_M — Leadership Succession</option>
+      </select>
+    </div>
+    <div id="sc-desc"></div>
+    <div id="sc-tags"></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Parameters</div>
+    <div class="field">
+      <label>Node Count <span class="rv" id="n-val">500</span></label>
+      <input type="range" id="n-slider" min="50" max="800" value="500" step="10">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Topology Seed</label>
+        <input type="number" id="seed-topo" value="47" min="1" max="99999">
+      </div>
+      <div class="field">
+        <label>Attribute Seed</label>
+        <input type="number" id="seed-attr" value="1047" min="1" max="99999">
+      </div>
+    </div>
+    <div class="field">
+      <label>Industry Template</label>
+      <select id="tmpl-sel">
+        <option value="auto">Auto (from scenario)</option>
+        <option value="tech_product">Tech / Product</option>
+        <option value="professional_services">Professional Services</option>
+        <option value="manufacturing">Manufacturing</option>
+        <option value="healthcare_ops">Healthcare Ops</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Topology</div>
+    <div class="field">
+      <label>Primary Topology</label>
+      <select id="topo-sel">
+        <option value="auto">Auto (from scenario)</option>
+        <option value="hier_corp">Hierarchical Corporate</option>
+        <option value="sbm">Stochastic Block Model</option>
+        <option value="ba">Barabási–Albert (PA)</option>
+        <option value="ws">Watts–Strogatz (Small World)</option>
+        <option value="er">Erdős–Rényi (Random)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Generate Layers</label>
+      <div class="chips" id="gen-chips"></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Visualisation</div>
+    <div class="field">
+      <label>Colour Nodes By</label>
+      <select id="color-by">
+        <option value="department">Department</option>
+        <option value="level">Seniority Level</option>
+        <option value="role_bucket">Role Bucket</option>
+        <option value="location">Location</option>
+        <option value="ai_adoption_score">AI Adoption Score</option>
+        <option value="change_readiness">Change Readiness</option>
+        <option value="attrition_risk">Attrition Risk</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Node Size By</label>
+      <select id="size-by">
+        <option value="degree">Degree</option>
+        <option value="betweenness">Betweenness Centrality</option>
+        <option value="level">Seniority Level</option>
+        <option value="uniform">Uniform</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Link Opacity <span class="rv" id="op-val">40%</span></label>
+      <input type="range" id="op-slider" min="5" max="95" value="40" step="5">
+    </div>
+    <div class="field">
+      <label>Labels</label>
+      <select id="lbl-sel">
+        <option value="none">None</option>
+        <option value="hubs">Hubs only (top 5%)</option>
+        <option value="all">All nodes</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="sec" id="import-sec" style="display:none">
+    <div class="sec-label">Imported File</div>
+    <div id="import-info" style="font-family:var(--font-mono);font-size:10px;color:var(--text-2);line-height:1.7"></div>
+    <button class="btn btn-ghost" id="btn-clear-import" style="margin-top:8px;width:100%;font-size:10px">✕ Clear import — use generator</button>
+  </div>
+
+  <div class="sec">
+    <button class="btn btn-primary gen-btn" id="btn-gen">▶  Generate Network</button>
+  </div>
+
+  <div class="status" id="status-bar">
+    <div class="dot"></div>
+    <span id="status-txt">Ready — configure and generate</span>
+  </div>
+</aside>
+
+<!-- ── MAIN ─────────────────────────────────────────── -->
+<main>
+  <div id="viz-wrap">
+    <svg id="viz-svg"></svg>
+
+    <!-- empty state -->
+    <div class="empty" id="empty">
+      <div class="empty-ring">⬡</div>
+      <p>No network yet</p>
+      <p>Configure parameters and click Generate</p>
+    </div>
+
+    <!-- canvas buttons -->
+    <div id="canvas-btns">
+      <button class="btn btn-ghost" id="btn-zoom-reset" title="Reset zoom">⊕</button>
+      <button class="btn btn-ghost" id="btn-freeze"     title="Freeze / unfreeze layout">❄ Freeze</button>
+      <button class="btn btn-ghost" id="btn-layers"     title="Layer filter">⊞ Layers</button>
+      <button class="btn btn-ghost" id="btn-legend"     title="Legend">◉ Legend</button>
+      <button class="btn btn-ghost" id="btn-valid"      title="Validation">✓ Valid.</button>
+      <button class="btn btn-ghost" id="btn-outcomes"   title="Synthetic outcomes">⬡ Outcomes</button>
+    </div>
+
+    <!-- layer filter overlay -->
+    <div class="overlay" id="ov-layers">
+      <div class="ov-title">
+        Layer Filter
+        <div style="display:flex;gap:6px;align-items:center">
+          <span id="lf-showall" style="color:var(--green);cursor:pointer;font-size:9px" title="Show all layers">show all</span>
+          <span id="lf-hideall" style="color:var(--red);cursor:pointer;font-size:9px"   title="Hide all layers">hide all</span>
+          <span id="lf-clear"   style="color:var(--cyan);cursor:pointer;font-size:9px"  title="Clear solo">clear solo</span>
+          <span class="ov-close" id="ov-layers-close">✕</span>
+        </div>
+      </div>
+      <div id="lf-rows"></div>
+      <div id="lf-hint" style="font-size:9px;color:var(--text-3);margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
+        Click row to solo · Eye icon to toggle visibility
+      </div>
+    </div>
+
+    <!-- legend overlay -->
+    <div class="overlay" id="ov-legend">
+      <div class="ov-title">Legend <span class="ov-close" id="ov-legend-close">✕</span></div>
+      <div id="leg-body"></div>
+    </div>
+
+    <!-- validation overlay -->
+    <div class="overlay" id="ov-validation">
+      <div class="ov-title">Validation <span class="ov-close" id="ov-valid-close">✕</span></div>
+      <div id="val-body"></div>
+    </div>
+
+    <!-- outcomes overlay -->
+    <div class="overlay" id="ov-outcomes" style="top:12px;right:12px;width:260px">
+      <div class="ov-title">Synthetic Outcomes <span class="ov-close" id="ov-outcomes-close">✕</span></div>
+      <div id="outcomes-body"></div>
+    </div>
+
+    <!-- progress -->
+    <div id="progress">
+      <div class="spinner"></div>
+      <div class="prog-label" id="prog-label">Generating…</div>
+      <div class="prog-sub"   id="prog-sub"></div>
+    </div>
+  </div>
+
+  <!-- metrics bar -->
+  <div id="mbar">
+    <div class="met"><div class="met-l">Nodes</div><div class="met-v" id="m-n">—</div></div>
+    <div class="msep"></div>
+    <div class="met"><div class="met-l">Edges</div><div class="met-v" id="m-e">—</div></div>
+    <div class="msep"></div>
+    <div class="met"><div class="met-l">Density</div><div class="met-v" id="m-d">—</div></div>
+    <div class="msep"></div>
+    <div class="met"><div class="met-l">Avg Degree</div><div class="met-v" id="m-ad">—</div></div>
+    <div class="msep"></div>
+    <div class="met"><div class="met-l">Clustering</div><div class="met-v" id="m-cl">—</div></div>
+    <div class="msep"></div>
+    <div class="met"><div class="met-l">Components</div><div class="met-v" id="m-co">—</div></div>
+    <div class="msep"></div>
+    <div class="met"><div class="met-l">Giant Comp %</div><div class="met-v" id="m-gc">—</div></div>
+    <div class="msep"></div>
+    <div class="met"><div class="met-l">Art. Points</div><div class="met-v" id="m-ap">—</div></div>
+    <div class="msep"></div>
+    <div class="met"><div class="met-l">Layers</div><div class="met-v" id="m-la">—</div></div>
+    <div class="msep"></div>
+    <div class="met" style="min-width:100px">
+      <div class="met-l">Degree Dist.</div>
+      <svg id="deg-sparkline" width="90" height="18" style="display:block;margin-top:2px"></svg>
+    </div>
+  </div>
+</main>
+
+<!-- tooltips -->
+<div id="tip-node"></div>
+<div id="tip-edge"></div>
+
+<script>
+
+// ═══════════════════════════════════════════════════════════════════
+// SEEDED PRNG — Mulberry32, fully deterministic
+// ═══════════════════════════════════════════════════════════════════
+function mulberry32(seed) {
+  seed = (seed >>> 0) || 1;
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// Gamma sample (Marsaglia & Tsang, 2000)
+function gammaSample(rng, shape) {
+  if (shape < 1) return gammaSample(rng, shape + 1) * Math.pow(Math.max(1e-10, rng()), 1 / shape);
+  const d = shape - 1/3, c = 1 / Math.sqrt(9 * d);
+  // Fix 9: Cap iterations — Marsaglia-Tsang almost always exits in 1-2 tries;
+  // 1 000 iterations is an astronomically safe ceiling against degenerate RNG state.
+  for (let _iter = 0; _iter < 1000; _iter++) {
+    let x, v;
+    do { x = normalSample(rng); v = 1 + c * x; } while (v <= 0);
+    v = v*v*v;
+    const u = rng();
+    if (u < 1 - 0.0331 * x*x*x*x) return d * v;
+    if (Math.log(u) < 0.5*x*x + d*(1 - v + Math.log(v))) return d * v;
+  }
+  return d; // fallback: return mode of the distribution (should never be reached)
+}
+
+// R's rbeta — ratio of two gammas
+function rbeta(rng, a, b) {
+  if (a <= 0 || b <= 0) return 0.5;
+  const ga = gammaSample(rng, a), gb = gammaSample(rng, b);
+  const s = ga + gb;
+  return s === 0 ? 0.5 : ga / s;
+}
+
+// R's rnorm (Box-Muller)
+function rnorm(rng, mean = 0, sd = 1) {
+  const u1 = Math.max(1e-10, rng()), u2 = rng();
+  return mean + sd * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
+function normalSample(rng) { return rnorm(rng, 0, 1); }
+
+// R's rlnorm
+function rlnorm(rng, meanlog, sdlog) { return Math.exp(rnorm(rng, meanlog, sdlog)); }
+
+// Weighted sample (matches R's sample() with prob= argument)
+function weightedSample(rng, items, weights) {
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = rng() * total;
+  for (let i = 0; i < items.length; i++) { r -= weights[i]; if (r <= 0) return items[i]; }
+  return items[items.length - 1];
+}
+
+function softClip(x, lo = 0, hi = 1) { return Math.min(hi, Math.max(lo, x)); }
+
+// FIX 1: Add scale01() — missing from original, needed for AI_M manager_enablement_score
+// Matches R's scale01(): (x - min) / (max - min), returns 0.5 if all equal
+function scale01(arr) {
+  const finite = arr.filter(v => isFinite(v));
+  if (finite.length === 0) return arr.map(() => 0.5);
+  const mn = finite.reduce((a,b)=>a<b?a:b, Infinity), mx = finite.reduce((a,b)=>a>b?a:b, -Infinity);
+  if (mx === mn) return arr.map(() => 0.5);
+  return arr.map(v => isFinite(v) ? (v - mn) / (mx - mn) : 0.5);
+}
+
+function quantile(arr, q) {
+  const sorted = arr.slice().sort((a, b) => a - b);
+  if (sorted.length === 0) return 0;
+  const pos = q * (sorted.length - 1);
+  const lo = Math.floor(pos), hi = Math.ceil(pos);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+}
+
+function normaliseProb(weights) {
+  const sum = weights.reduce((a, b) => a + b, 0);
+  if (sum === 0) return weights.map(() => 1 / weights.length);
+  return weights.map(w => w / sum);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DATA DEFINITIONS
+// ═══════════════════════════════════════════════════════════════════
+const INDUSTRY_TEMPLATES = {
+  tech_product: {
+    departments: ["Engineering","Product","Sales","Marketing","Operations","HR","Finance"],
+    dept_weights: [0.30,0.16,0.14,0.10,0.12,0.08,0.10],
+    locations: ["HQ","Remote","Regional"],
+    location_weights: [0.45,0.35,0.20],
+    seniority_levels: ["IC-1","IC-2","IC-3","Senior","Director","Exec"],
+    seniority_weights: [0.26,0.24,0.19,0.17,0.10,0.04]
+  },
+  professional_services: {
+    departments: ["Client Services","Delivery","Strategy","Sales","Operations","People"],
+    dept_weights: [0.28,0.22,0.12,0.14,0.14,0.10],
+    locations: ["HQ","Client Site","Remote","Regional"],
+    location_weights: [0.30,0.25,0.25,0.20],
+    seniority_levels: ["Analyst","Consultant","Manager","Senior Manager","Partner","Exec"],
+    seniority_weights: [0.22,0.24,0.24,0.16,0.10,0.04]
+  },
+  manufacturing: {
+    departments: ["Plant Ops","Engineering","Supply Chain","Quality","Sales","HR","Finance"],
+    dept_weights: [0.24,0.16,0.18,0.10,0.10,0.10,0.12],
+    locations: ["Plant","HQ","Regional","Remote"],
+    location_weights: [0.42,0.28,0.20,0.10],
+    seniority_levels: ["Operator","Specialist","Supervisor","Manager","Director","Exec"],
+    seniority_weights: [0.28,0.24,0.18,0.16,0.10,0.04]
+  },
+  healthcare_ops: {
+    departments: ["Clinical Ops","Admin","IT","People","Finance","Quality","External Relations"],
+    dept_weights: [0.32,0.14,0.12,0.10,0.10,0.12,0.10],
+    locations: ["Campus","Regional","Remote"],
+    location_weights: [0.55,0.25,0.20],
+    seniority_levels: ["Staff","Senior Staff","Lead","Manager","Director","Exec"],
+    seniority_weights: [0.30,0.24,0.18,0.14,0.10,0.04]
+  }
+};
+
+
+const SCENARIO_REGISTRY = {
+  // ── DEMO: classic first-meeting scenario. Moderate silo (E-I ~-0.3), not extreme.
+  // hier_corp so the hierarchy is visible; communication + advice + trust give 3 readable layers.
+  DEMO_M: {
+    title:      "Executive Demo — Silos & Brokers",
+    template:   "tech_product",
+    topology:   "hier_corp",
+    tags:       ["exec_demo","departmental_silo","broker_fragility","multiplex"],
+    layers:     ["communication","advice","trust"],
+    defaultN:   300, minN:50, maxN:600, seed_topo:47,
+    desc:       "The go-to first-meeting scenario. Formal hierarchy overlaid with informal communication and advice networks. Designed to surface three classic findings: departmental silos (moderate E-I index), key brokers connecting isolated clusters, and articulation-point fragility. Compact at 300 nodes so it renders quickly and reads clearly on a laptop screen."
+  },
+
+  // ── CHRO: privacy-safe, location homophily signal, suitable for HR analytics demos
+  CHRO_M: {
+    title:      "Privacy-Safe CHRO Pilot",
+    template:   "professional_services",
+    topology:   "sbm",
+    tags:       ["privacy_safe","location_homophily","hr_analytics","hybrid_work"],
+    layers:     ["communication","trust","collaboration","energy"],
+    defaultN:   500, minN:50, maxN:800, seed_topo:57,
+    desc:       "Built for HR analytics conversations where real data cannot be used. Stochastic block model with strong location homophily — remote workers form a discernible cluster, on-site workers another. The energy layer captures informal vitality ties. Exposes the hybrid-work connectivity gap without any personally identifiable patterns."
+  },
+
+  // ── REORG: before/after team split. Nodes carry team_before and team_after attributes.
+  // Cross-team edges are sparse post-reorg, visible in collaboration and trust layers.
+  REORG_M: {
+    title:      "Reorg Lab — Team Merge & Split",
+    template:   "tech_product",
+    topology:   "hier_corp",
+    tags:       ["reorg","team_merge","before_after","org_design","change_management"],
+    layers:     ["reporting","communication","collaboration","trust"],
+    defaultN:   500, minN:50, maxN:800, seed_topo:67,
+    desc:       "Simulates an organisation mid-reorganisation. Every node carries team_before and team_after attributes reflecting the structural change. Within-new-team ties are dense; cross-team informal ties are deliberately sparse, showing the collaboration debt that accumulates after a merge or split. Reporting layer shows the new formal structure; trust layer shows where the old structure lives on informally."
+  },
+
+  // ── RESEARCH: clean ER null model, multiplex layers, reproducible seed
+  RESEARCH_SM: {
+    title:      "Reproducible Research Benchmark",
+    template:   "tech_product",
+    topology:   "er",
+    tags:       ["benchmark","research","null_model","reproducibility","multiplex"],
+    layers:     ["communication","trust","advice","collaboration"],
+    defaultN:   150, minN:50, maxN:500, seed_topo:47,
+    desc:       "A clean null-model baseline for method comparison. Erdős–Rényi topology with four independent relationship layers. Degree distribution is Poisson (by design), giving researchers a known baseline to contrast against BA or SBM outputs. Fully reproducible: same seeds always produce identical networks. Scaled to 150 nodes for fast computation and easy publication figures."
+  },
+
+  // ── DEV: small-world, compact, multiplex, stable IDs
+  DEV_S: {
+    title:      "Tool Builder Integration Pack",
+    template:   "tech_product",
+    topology:   "ws",
+    tags:       ["developer","api_ready","multiplex","small_world","integration_test"],
+    layers:     ["communication","trust","innovation","mentorship"],
+    defaultN:   120, minN:50, maxN:300, seed_topo:77,
+    desc:       "Compact, stable, multiplex — designed for developers building ONA tooling. Watts-Strogatz small-world topology gives realistic clustering and short path lengths without heavy computation. Four layers with different directionality conventions. Node IDs are zero-padded and stable across regeneration at the same seed. GraphML and JSON exports are well-formed and immediately loadable."
+  },
+
+  // ── AI: human-agent multiplex, adoption spread, champions, non-human nodes
+  AI_M: {
+    title:      "AI Adoption & Human-Agent Network",
+    template:   "tech_product",
+    topology:   "hier_corp",
+    tags:       ["ai_adoption","human_agent","digital_transformation","tool_interaction","champions"],
+    layers:     ["communication","advice","trust","innovation","decision_influence","tool_interaction"],
+    defaultN:   500, minN:50, maxN:800, seed_topo:87,
+    desc:       "Models how AI tool adoption spreads through an organisation. Six non-human AI agent nodes are embedded in the network; tool_interaction edges connect high-adoption humans to agents. Nodes carry ai_adoption_score, manager_enablement_score, and adoption_champion flags. The advice and decision_influence layers reveal whether champions are central or peripheral to how information and decisions actually flow."
+  },
+
+  // ── RESIZE: deliberately over-deep hierarchy with narrow spans, at-risk roles flagged
+  RESIZE_M: {
+    title:      "Restructuring & Delayering",
+    template:   "manufacturing",
+    topology:   "hier_corp",
+    tags:       ["restructuring","delayering","span_of_control","manager_overload","rightsizing"],
+    layers:     ["reporting","communication","advice","mentorship","trust"],
+    defaultN:   500, minN:50, maxN:800, seed_topo:97,
+    desc:       "Exposes the costs of over-layered hierarchies. The formal reporting structure is generated with deliberately narrow spans (2–4 direct reports per manager), producing 6–7 levels even in mid-size networks. Nodes carry span_of_control and hierarchy_depth attributes. at_risk_role flags mark positions targeted for consolidation. The gap between the formal reporting layer and the informal advice/trust layers shows where actual work is happening."
+  },
+
+  // ── MA: dual-legacy SBM, asymmetric integration readiness, cross-legacy trust gap
+  MA_M: {
+    title:      "Post-Merger Integration",
+    template:   "professional_services",
+    topology:   "sbm",
+    tags:       ["m_and_a","post_merger","legacy_blocks","trust_gap","talent_retention"],
+    layers:     ["communication","trust","advice","decision_influence","innovation"],
+    defaultN:   500, minN:50, maxN:800, seed_topo:107,
+    desc:       "Two legacy organisations have merged on paper but not yet in practice. The block model generates dense within-legacy clusters and sparse cross-legacy ties. Trust edges crossing the legacy boundary are further thinned (40% drop) to reflect the trust lag that persists 12–18 months post-merger. Nodes carry legacy_company and integration_readiness attributes. The decision_influence layer often shows Legacy A retaining disproportionate influence — a common M&A finding."
+  },
+
+  // ── CULTURE: SBM with culture-carrier seed nodes, cross-boundary energy ties, communities of practice
+  CULTURE_M: {
+    title:      "Culture Change & Collaboration Reset",
+    template:   "professional_services",
+    topology:   "sbm",
+    tags:       ["culture_change","communities_of_practice","hybrid_norms","energy","change_carriers"],
+    layers:     ["communication","trust","energy","innovation","mentorship"],
+    defaultN:   500, minN:50, maxN:800, seed_topo:117,
+    desc:       "Designed for culture transformation engagements. The between-block probability is set low (siloed baseline), but a population of culture_carrier nodes generates cross-boundary energy ties, forming emergent communities of practice that cut across the formal block structure. The energy layer shows these informal vitality connections. Mentorship edges run toward culture carriers — who they sponsor matters as much as who sponsors them."
+  },
+
+  // ── SUCCESSION: BA hub network, key-person risk, successor readiness scores
+  SUCCESSION_M: {
+    title:      "Succession Planning & Key-Person Risk",
+    template:   "professional_services",
+    topology:   "ba",
+    tags:       ["succession","key_person_risk","hub_concentration","broker_fragility","resilience"],
+    layers:     ["decision_influence","advice","trust","communication","mentorship"],
+    defaultN:   500, minN:50, maxN:800, seed_topo:127,
+    desc:       "A Barabási-Albert hub network where a small number of senior nodes concentrate influence and brokerage. Nodes carry key_person_risk_score (combining betweenness, decision_influence degree, and seniority) and successor_readiness (performance × change_readiness × tenure proximity to key person). The mentorship layer shows who is being prepared; the advice layer shows whether succession candidates are already in the information flow. Removing top-3 nodes by betweenness visibly fragments the network."
+  }
+};
+
+const ALL_LAYERS = ["communication","trust","advice","collaboration","innovation","mentorship","decision_influence","reporting","tool_interaction","energy"];
+// Matches R: DIRECTED_LAYERS <- c("advice","decision_influence","mentorship","reporting","tool_interaction")
+const DIRECTED_LAYERS = new Set(["advice","decision_influence","mentorship","reporting","tool_interaction"]);
+
+// Matches R: layer_keep_prob()
+const LAYER_KEEP_PROB = {
+  communication:0.85, trust:0.54, advice:0.45, collaboration:0.70,
+  innovation:0.35, mentorship:0.25, decision_influence:0.30,
+  reporting:1.00, tool_interaction:0.20, energy:0.30
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// NODE GENERATION
+// ═══════════════════════════════════════════════════════════════════
+function generateNodes(n, templateId, scenarioId, seedAttr) {
+  const rng = mulberry32(seedAttr);
+  const tmpl = INDUSTRY_TEMPLATES[templateId];
+  const senLevelMap = Object.fromEntries(tmpl.seniority_levels.map((s, i) => [s, i + 1]));
+  const nodes = [];
+
+  // Cohort years — weighted toward recent (normalise linear ascending weights)
+  const cohortYears   = [2017,2018,2019,2020,2021,2022,2023,2024,2025,2026];
+  const cohortWeights = normaliseProb(cohortYears.map((_, i) => i + 1));
+
+  // Gender distribution: ~46% female, ~50% male, ~4% non-binary/other
+  const genderOpts    = ["female","male","non-binary"];
+  const genderWeights = [0.46, 0.50, 0.04];
+
+  const currentYear = 2026;
+
+  for (let i = 0; i < n; i++) {
+    const dept   = weightedSample(rng, tmpl.departments,      tmpl.dept_weights);
+    const sen    = weightedSample(rng, tmpl.seniority_levels, tmpl.seniority_weights);
+    const loc    = weightedSample(rng, tmpl.locations,        tmpl.location_weights);
+    const cohort = weightedSample(rng, cohortYears, cohortWeights);
+
+    // v5: tenure derived from cohort year + small jitter — no more uncorrelated attributes
+    // Employees hired in 2017 have ~9 years tenure; 2026 hires ~0-0.5 years
+    const maxTenure = currentYear - cohort + 0.5;
+    const tenureJitter = rng() * Math.min(1.0, maxTenure * 0.4);
+    const tenure = Math.max(0.1, Math.min(maxTenure, maxTenure * (0.6 + rng() * 0.4) - tenureJitter));
+
+    const perf   = Math.min(5, Math.max(1, rnorm(rng, 3.2, 0.6)));
+    const gender = weightedSample(rng, genderOpts, genderWeights);
+    const level  = Math.max(1, Math.min(6, senLevelMap[sen] || 1));
+
+    // ai_adoption: rbeta(2.5, 3.5) + department/seniority bonus
+    const aiBase  = rbeta(rng, 2.5, 3.5);
+    const aiBonus = (["Engineering","IT","Product","Strategy"].includes(dept) ? 0.12 : 0)
+                  + (["Senior","Director","Exec","Partner"].includes(sen) ? 0.08 : 0);
+    const ai_adoption_score = softClip(aiBase + aiBonus, 0.01, 0.99);
+
+    // change_readiness: rbeta(3,2), slightly boosted for shorter tenure
+    const change_readiness = softClip(rbeta(rng, 3, 2) + (tenure < 2 ? 0.08 : -0.03), 0.01, 0.99);
+
+    // attrition_risk: higher for new joiners and high performers (flight risk)
+    const attrition_risk = softClip(
+      rbeta(rng, 2, 5) + (tenure < 1.5 ? 0.10 : 0) + (perf > 4.4 ? 0.05 : 0), 0.01, 0.99);
+
+    const role_bucket = level <= 2 ? "individual"
+                      : level === 3 ? "manager"
+                      : level === 4 ? "senior_manager" : "executive";
+
+    nodes.push({
+      id:                `p_${String(i + 1).padStart(5, '0')}`,
+      label:             `P${i + 1}`,
+      department:        dept,
+      seniority_level:   sen,
+      level,
+      role_bucket,
+      location:          loc,
+      tenure_years:      Math.round(tenure * 10) / 10,
+      hire_cohort:       cohort,
+      performance_score: Math.round(perf * 100) / 100,
+      is_newcomer:       tenure < 1.0,
+      gender,
+      ai_adoption_score:  Math.round(ai_adoption_score  * 1000) / 1000,
+      change_readiness:   Math.round(change_readiness   * 1000) / 1000,
+      attrition_risk:     Math.round(attrition_risk     * 1000) / 1000,
+      is_non_human: false
+    });
+  }
+
+  // CHRO_M: location override — boost Remote so location homophily is visible
+  if (scenarioId === "CHRO_M") {
+    const rng2 = mulberry32(seedAttr + 101);
+    const locProbs = normaliseProb(tmpl.locations.map(l =>
+      l === "Remote" ? 0.45 : l === "HQ" ? 0.30 : l === "Regional" ? 0.18 : 0.07
+    ));
+    nodes.forEach(nd => { nd.location = weightedSample(rng2, tmpl.locations, locProbs); });
+  }
+
+  applyScenarioNodeModifiers(nodes, scenarioId, seedAttr);
+  return nodes;
+}
+
+function applyScenarioNodeModifiers(nodes, scenarioId, seedAttr) {
+
+  // ── AI_M: 6 AI agent nodes + adoption champion + manager enablement ──
+  if (scenarioId === "AI_M") {
+    const maxCohort = nodes.reduce((a, n) => n.hire_cohort > a ? n.hire_cohort : a, -Infinity);
+    for (let i = 0; i < 6; i++) {
+      nodes.push({
+        id: `ai_agent_${String(i + 1).padStart(3, '0')}`,
+        label: `Agent ${i + 1}`,
+        department: "AI Systems", seniority_level: "System", level: 3,
+        role_bucket: "system", location: "System", tenure_years: 0.1,
+        hire_cohort: maxCohort, performance_score: 5.0,
+        is_newcomer: false, gender: "na",
+        ai_adoption_score: 1.0, change_readiness: 1.0, attrition_risk: 0.0,
+        is_non_human: true
+      });
+    }
+    const humanNodes = nodes.filter(n => !n.is_non_human);
+    const q90 = quantile(humanNodes.map(n => n.ai_adoption_score), 0.9);
+    const crScaled = scale01(nodes.map(n => n.change_readiness));
+    const meRng = mulberry32(seedAttr + 200);
+    nodes.forEach((nd, idx) => {
+      nd.adoption_champion = !nd.is_non_human && nd.ai_adoption_score >= q90;
+      const roleBin = ["manager","senior_manager","executive"].includes(nd.role_bucket) ? 1 : 0;
+      nd.manager_enablement_score = Math.round(softClip(
+        0.45 + 0.25 * crScaled[idx] + 0.20 * roleBin + rnorm(meRng, 0, 0.05), 0, 1) * 1000) / 1000;
+    });
+  }
+
+  // ── MA_M: dual legacy split by dept cohort, not raw index order ──
+  // Legacy A = depts 0,2,4 (even index in sorted dept list); Legacy B = depts 1,3,5 (odd)
+  // This gives geographically plausible mixing — two legacy companies each had full functions
+  if (scenarioId === "MA_M") {
+    const depts = [...new Set(nodes.map(n => n.department))].sort();
+    const legacyByDept = Object.fromEntries(depts.map((d, i) => [d, i % 2 === 0 ? "Legacy_A" : "Legacy_B"]));
+    const irRng = mulberry32(seedAttr + 300);
+    nodes.forEach(nd => {
+      nd.legacy_company = legacyByDept[nd.department];
+      // Integration readiness: execs slightly higher (they agreed to the deal)
+      nd.integration_readiness = Math.round(softClip(
+        rbeta(irRng, 2.5, 2.5) + (nd.role_bucket === "executive" ? 0.12 : 0), 0.01, 0.99) * 1000) / 1000;
+    });
+  }
+
+  // ── RESIZE_M: span_of_control and hierarchy_depth — computed after tree is built,
+  // so we set placeholder here and fill it in generateHierCorp via node attributes.
+  // at_risk_role: IC/Manager in over-staffed support functions
+  if (scenarioId === "RESIZE_M") {
+    nodes.forEach(nd => {
+      nd.at_risk_role = ["Operations","Admin","Finance","Quality"].includes(nd.department)
+                     && nd.level <= 3;
+      nd.span_of_control = 0;    // filled by HierCorp tree builder
+      nd.hierarchy_depth = 0;    // filled by HierCorp tree builder
+    });
+  }
+
+  // ── REORG_M: team_before and team_after — simulate a split-and-merge ──
+  // team_before = department (reflects old org)
+  // team_after  = new cross-functional squads (4–5 squads, each mixing 2–3 depts)
+  if (scenarioId === "REORG_M") {
+    const depts = [...new Set(nodes.map(n => n.department))].sort();
+    const nSquads = Math.max(4, Math.min(6, Math.round(depts.length * 0.8)));
+    const reorgRng = mulberry32(seedAttr + 400);
+    // Assign depts to squads round-robin, then jitter individuals ±1 squad
+    const deptSquad = Object.fromEntries(depts.map((d, i) => [d, i % nSquads]));
+    nodes.forEach(nd => {
+      nd.team_before = nd.department;
+      const base = deptSquad[nd.department];
+      // 20% of people land in a different squad than their dept's default
+      const jitter = reorgRng() < 0.20 ? (reorgRng() < 0.5 ? -1 : 1) : 0;
+      nd.team_after = `Squad_${((base + jitter + nSquads) % nSquads) + 1}`;
+    });
+  }
+
+  // ── SUCCESSION_M: key_person_risk_score + successor_readiness ──
+  // key_person_risk: level * 0.4 + will-be-filled betweenness * 0.6 (betweenness set post-metrics)
+  // Here we set the seniority part; betweenness part added in computeOutcomes
+  if (scenarioId === "SUCCESSION_M") {
+    const q80 = quantile(nodes.map(n => n.level), 0.8);
+    nodes.forEach(nd => {
+      // Mark anyone at or above the 80th percentile of level as a key person candidate
+      nd.is_key_person    = nd.level >= q80;
+      // Successor readiness: high performance × change readiness × not-too-junior
+      nd.successor_readiness = Math.round(softClip(
+        nd.performance_score / 5 * 0.45
+        + nd.change_readiness * 0.35
+        + (nd.level / 6) * 0.20, 0, 1) * 1000) / 1000;
+      nd.key_person_risk_score = 0; // filled by computeOutcomes after betweenness is known
+    });
+  }
+
+  // ── CULTURE_M: culture_carrier — high change_readiness or in culture-forward depts ──
+  if (scenarioId === "CULTURE_M") {
+    const q75cr = quantile(nodes.map(n => n.change_readiness), 0.75);
+    nodes.forEach(nd => {
+      nd.culture_carrier = nd.change_readiness >= q75cr
+        || ["Strategy","Product","Design","Engineering","Client Services"].includes(nd.department);
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TOPOLOGY GENERATORS
+// ═══════════════════════════════════════════════════════════════════
+
+// generate_er_graph: igraph::sample_gnp
+function generateER(nodes, p, rng) {
+  const n = nodes.length, edges = [], adj = new Set();
+  const key = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
+  for (let i = 0; i < n; i++)
+    for (let j = i + 1; j < n; j++)
+      if (rng() < p) { const k = key(i,j); if (!adj.has(k)) { adj.add(k); edges.push({from:i, to:j}); } }
+  return edges;
+}
+
+// generate_ws_graph: igraph::sample_smallworld(dim=1, nei=k/2, p=p_rewire)
+function generateWS(nodes, k, pRewire, rng) {
+  const n = nodes.length;
+  const nei = Math.max(1, Math.floor(k / 2));
+  const adj = new Set();
+  const key = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
+  const edges = [];
+  // Build ring lattice
+  for (let i = 0; i < n; i++)
+    for (let d = 1; d <= nei; d++) {
+      const j = (i + d) % n;
+      const k2 = key(i, j);
+      if (!adj.has(k2)) { adj.add(k2); edges.push({from: i, to: j}); }
+    }
+  // Rewire
+  for (let e = 0; e < edges.length; e++) {
+    if (rng() < pRewire) {
+      const oldKey = key(edges[e].from, edges[e].to);
+      let newTo = Math.floor(rng() * n);
+      let tries = 0;
+      while ((newTo === edges[e].from || adj.has(key(edges[e].from, newTo))) && tries < 20) {
+        newTo = Math.floor(rng() * n); tries++;
+      }
+      if (newTo !== edges[e].from && !adj.has(key(edges[e].from, newTo))) {
+        adj.delete(oldKey);
+        edges[e] = {from: edges[e].from, to: newTo};
+        adj.add(key(edges[e].from, newTo));
+      }
+    }
+  }
+  return edges;
+}
+
+// generate_ba_graph — Barabási–Albert with realistic power-law degree distribution.
+// Key improvements over v3:
+//   1. m=5 (was 3) → denser hubs, more visible fat tail
+//   2. power=1.3, zero_appeal=1.0 → steeper preferential attachment
+//   3. Uses a "stochastic acceptance" sampler (O(1) per trial) instead of O(n) scan
+//      so the inner loop is fast even for n=800
+//   4. Seniority bias applied as a multiplier on the fitness array (not a post-hoc rewire)
+//   5. 15% of edges rewired toward high-seniority nodes (was 10%) after construction
+function generateBA(nodes, m, rng) {
+  m = 5; // override — m=3 doesn't produce visible power-law tails
+  const n = nodes.length;
+  if (n <= m + 1) return generateER(nodes, 0.15, rng);
+
+  const POWER = 1.3, ZERO_APPEAL = 1.0;
+
+  // Seniority fitness: executives/senior managers become the hubs
+  const senFit = {individual:1.0, manager:1.5, senior_manager:2.2, executive:3.5, system:2.0};
+  const fitness = nodes.map(nd => senFit[nd.role_bucket] || 1.0);
+
+  const degree  = new Array(n).fill(0);
+  const adj     = new Set();
+  const key     = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
+  const edges   = [];
+
+  // Seed clique of m+1 nodes
+  const m0 = Math.min(m + 1, n);
+  for (let i = 0; i < m0; i++)
+    for (let j = i + 1; j < m0; j++) {
+      const k = key(i, j);
+      if (!adj.has(k)) { adj.add(k); edges.push({from:i,to:j}); degree[i]++; degree[j]++; }
+    }
+
+  // Stochastic acceptance PA sampler — O(1) per trial, no O(n) scan
+  // Vose-Diaconis: accept candidate j with prob w[j]/w_max
+  // w[j] = degree[j]^POWER * fitness[j] + ZERO_APPEAL
+  let wMax = 0;
+  const w = new Float64Array(n);
+  for (let j = 0; j < m0; j++) {
+    w[j] = Math.pow(degree[j], POWER) * fitness[j] + ZERO_APPEAL;
+    if (w[j] > wMax) wMax = w[j];
+  }
+
+  for (let i = m0; i < n; i++) {
+    // Update weight of new node (degree=0 initially)
+    w[i] = fitness[i] * ZERO_APPEAL;
+    if (w[i] > wMax) wMax = w[i];
+
+    const targets = new Set();
+    let attempts  = 0;
+    const maxAtt  = m * 80;
+    while (targets.size < Math.min(m, i) && attempts < maxAtt) {
+      attempts++;
+      const j = Math.floor(rng() * i); // candidate from [0, i-1]
+      if (targets.has(j)) continue;
+      if (adj.has(key(i, j))) continue;
+      // Stochastic acceptance: accept with prob w[j] / wMax
+      if (rng() < w[j] / wMax) targets.add(j);
+    }
+
+    targets.forEach(t => {
+      const k = key(i, t);
+      if (!adj.has(k)) {
+        adj.add(k); edges.push({from:i, to:t});
+        degree[i]++; degree[t]++;
+        // Update weight for t (degree changed)
+        w[t] = Math.pow(degree[t], POWER) * fitness[t] + ZERO_APPEAL;
+        if (w[t] > wMax) wMax = w[t];
+      }
+    });
+    // Update weight for i after connecting
+    w[i] = Math.pow(degree[i], POWER) * fitness[i] + ZERO_APPEAL;
+    if (w[i] > wMax) wMax = w[i];
+  }
+
+  // Post-hoc rewiring: 15% of low-degree edges redirected toward high-fitness nodes
+  // This amplifies the hub-and-spoke star structure visible in real influence networks
+  const highNodes = nodes.map((nd, i) => i).filter(i => fitness[i] >= 2.2);
+  const nRewire   = Math.round(edges.length * 0.15);
+  const lowNodes  = nodes.map((nd, i) => i).filter(i => fitness[i] <= 1.0 && degree[i] > 1);
+
+  for (let iter = 0; iter < nRewire && highNodes.length > 0 && lowNodes.length > 0; iter++) {
+    const victim = lowNodes[Math.floor(rng() * lowNodes.length)];
+    const victimEdges = edges.reduce((acc, e, idx) => {
+      if (e.from === victim || e.to === victim) acc.push(idx); return acc;
+    }, []);
+    if (victimEdges.length === 0) continue;
+    const eIdx   = victimEdges[Math.floor(rng() * victimEdges.length)];
+    const e      = edges[eIdx];
+    const oldNbr = e.from === victim ? e.to : e.from;
+    // Skip if oldNbr is already a high node (don't break existing hub connections)
+    if (fitness[oldNbr] >= 2.2) continue;
+
+    // Pick target proportional to w among highNodes
+    const highFitSum = highNodes.reduce((s, i) => s + w[i], 0);
+    let r   = rng() * highFitSum, target = highNodes[highNodes.length - 1];
+    for (const hi of highNodes) { r -= w[hi]; if (r <= 0) { target = hi; break; } }
+    if (target === victim) continue;
+    const newKey = key(victim, target);
+    const oldKey = key(victim, oldNbr);
+    if (adj.has(newKey)) continue;
+
+    adj.delete(oldKey); adj.add(newKey);
+    edges[eIdx] = {from: Math.min(victim, target), to: Math.max(victim, target)};
+    degree[oldNbr]--; degree[target]++;
+    w[oldNbr] = Math.pow(degree[oldNbr], POWER) * fitness[oldNbr] + ZERO_APPEAL;
+    w[target] = Math.pow(degree[target], POWER) * fitness[target]  + ZERO_APPEAL;
+    if (w[target] > wMax) wMax = w[target];
+  }
+
+  return edges;
+}
+
+// build_sbm_matrix — calibrated block probabilities per scenario
+function buildSBMMatrix(nodes, scenarioId) {
+  const depts = [...new Set(nodes.map(n => n.department))].sort();
+  const k = depts.length;
+
+  // Default: moderate within-block, sparse between-block
+  const within = 0.18, between = 0.03;
+  const block = Array.from({length: k}, (_, i) =>
+    Array.from({length: k}, (_, j) => i === j ? within : between)
+  );
+
+  // DEMO_M: moderate silo — visible but not extreme. Two depts more isolated than others.
+  // E-I index should land around -0.25 to -0.35, not the -0.7+ that 0.005 produces.
+  if (scenarioId === "DEMO_M" && k >= 2) {
+    block[0][0] = 0.20; block[1][1] = 0.16;
+    block[0][1] = block[1][0] = 0.02; // weak cross-dept — a silo, but not a wall
+  }
+
+  // CHRO_M: slightly denser communication overall, strong location homophily overlay
+  if (scenarioId === "CHRO_M") {
+    for (let i = 0; i < k; i++) block[i][i] = 0.20;
+    for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) block[i][j] *= 0.80;
+  }
+
+  // CULTURE_M: deliberately siloed baseline — between-block very low.
+  // The culture carrier energy ties (added post-SBM) are what create cross-boundary signal.
+  // Without this contrast the community-of-practice finding isn't visible.
+  if (scenarioId === "CULTURE_M") {
+    for (let i = 0; i < k; i++) block[i][i] = 0.20;
+    for (let i = 0; i < k; i++) for (let j = i + 1; j < k; j++)
+      block[i][j] = block[j][i] = 0.015; // strong silo baseline
+  }
+
+  // MA_M: two legacy clusters — between-block already handled via legacy thinning in generateSBM
+  // Set within-block high to make the two legacy populations visibly dense internally
+  if (scenarioId === "MA_M") {
+    for (let i = 0; i < k; i++) block[i][i] = 0.22;
+    for (let i = 0; i < k; i++) for (let j = i + 1; j < k; j++)
+      block[i][j] = block[j][i] = 0.04;
+  }
+
+  return {block, depts};
+}
+
+// generate_sbm_graph — degree-corrected SBM for realistic heavy-tailed degree distribution.
+// Real org networks are NOT Erdős–Rényi within blocks. People differ enormously in sociability.
+// We model this with a per-node "theta" drawn from a Pareto-like distribution: p(i,j) = base * theta_i * theta_j.
+// This preserves the block structure while producing a fat-tailed degree distribution.
+function generateSBM(nodes, scenarioId, seedTopo) {
+  const isDualLegacy = (scenarioId === "MA_M");
+  const {block, depts} = buildSBMMatrix(nodes, scenarioId);
+  const deptIdx = Object.fromEntries(depts.map((d, i) => [d, i]));
+  const adj     = new Set();
+  const key     = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
+  const edges   = [];
+  const rng     = mulberry32(seedTopo);
+
+  // Per-node sociability scores θ_i ~ Pareto(α=1.5, x_min=0.5) clipped to [0.3, 4.5]
+  // High θ = connector/hub, low θ = peripheral. Pareto gives the fat tail we need.
+  // Also add a seniority boost: execs and senior managers are structurally more connected.
+  const socRng = mulberry32(seedTopo + 500);
+  const senSoc = {individual:1.0, manager:1.3, senior_manager:1.8, executive:2.6, system:1.5};
+  const theta  = nodes.map(nd => {
+    const alpha  = 1.5, xMin = 0.5;
+    // Pareto sample: x_min / U^(1/alpha)
+    const pareto = xMin / Math.pow(Math.max(1e-6, socRng()), 1 / alpha);
+    const clipped = Math.min(4.5, Math.max(0.3, pareto));
+    return clipped * (senSoc[nd.role_bucket] || 1.0);
+  });
+
+  // Normalise theta within each dept block so expected degree is preserved
+  const deptTheta = {};
+  nodes.forEach((nd, i) => {
+    const d = nd.department;
+    if (!deptTheta[d]) deptTheta[d] = [];
+    deptTheta[d].push(theta[i]);
+  });
+  const deptMeanTheta = {};
+  Object.entries(deptTheta).forEach(([d, arr]) => {
+    deptMeanTheta[d] = arr.reduce((a,b)=>a+b,0) / arr.length;
+  });
+  const thetaNorm = nodes.map((nd, i) => theta[i] / Math.max(0.01, deptMeanTheta[nd.department]));
+
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const bi = deptIdx[nodes[i].department] ?? 0;
+      const bj = deptIdx[nodes[j].department] ?? 0;
+      // Degree-corrected probability: base_block * theta_i * theta_j, clipped to (0, 0.95)
+      const p = Math.min(0.95, Math.max(0, block[bi][bj] * thetaNorm[i] * thetaNorm[j]));
+      if (rng() < p) {
+        const k2 = key(i, j);
+        if (!adj.has(k2)) { adj.add(k2); edges.push({from: i, to: j}); }
+      }
+    }
+  }
+
+  // Location homophily overlay
+  addLocationOverlay(nodes, edges, adj, key, seedTopo + 11);
+
+  // Dual legacy: drop 40% of cross-legacy edges (stronger friction than before)
+  if (isDualLegacy) {
+    const legRng = mulberry32(seedTopo + 12);
+    const toRemove = [];
+    edges.forEach((e, i) => {
+      const ni = nodes[e.from], nj = nodes[e.to];
+      if (ni.legacy_company && nj.legacy_company && ni.legacy_company !== nj.legacy_company) {
+        if (legRng() < 0.40) toRemove.push(i);
+      }
+    });
+    for (let i = toRemove.length - 1; i >= 0; i--) {
+      const idx = toRemove[i];
+      adj.delete(key(edges[idx].from, edges[idx].to));
+      edges.splice(idx, 1);
+    }
+  }
+
+  return edges;
+}
+
+// FIX 2: Location overlay now uses per-location seeded RNGs matching R's
+// sample_location_overlay_edges() which seeds each location group separately:
+//   same-dept:  seed = baseSeed + location_index (1-based)
+//   cross-dept: seed = baseSeed + 100 + location_index (1-based)
+function addLocationOverlay(nodes, edges, adj, key, baseSeed) {
+  const byLoc = {};
+  nodes.forEach((nd, idx) => {
+    if (!byLoc[nd.location]) byLoc[nd.location] = [];
+    byLoc[nd.location].push(idx);
+  });
+  const locNames = Object.keys(byLoc).sort();  // alphabetical, matching R's split()
+
+  locNames.forEach((loc, locIdx) => {
+    const locIndex = locIdx + 1;  // 1-based, matching R's seq_along
+    const members = byLoc[loc];
+    if (members.length < 2) return;
+
+    // Same-dept pairs: target = round(sum(choose2(dept_sizes)) * 0.07)
+    // Use per-location seeded RNG: seed = baseSeed + locIndex
+    const sameDeptRng = mulberry32(baseSeed + locIndex);
+    const byDept = {};
+    members.forEach(idx => {
+      const d = nodes[idx].department;
+      if (!byDept[d]) byDept[d] = [];
+      byDept[d].push(idx);
+    });
+    let sameDeptPossible = 0;
+    Object.values(byDept).forEach(dm => { sameDeptPossible += choose2(dm.length); });
+    const sameDeptTarget = Math.round(sameDeptPossible * 0.07);
+
+    Object.values(byDept).forEach(deptMembers => {
+      const target = Math.round(choose2(deptMembers.length) * 0.07);
+      for (let t = 0; t < target * 3 && t < 1000; t++) {
+        const a = deptMembers[Math.floor(sameDeptRng() * deptMembers.length)];
+        const b = deptMembers[Math.floor(sameDeptRng() * deptMembers.length)];
+        if (a === b) continue;
+        const k2 = key(a, b);
+        if (!adj.has(k2)) { adj.add(k2); edges.push({from: Math.min(a,b), to: Math.max(a,b)}); break; }
+      }
+    });
+
+    // Cross-dept pairs: separate seeded RNG per R: seed = baseSeed + 100 + locIndex
+    const crossDeptRng = mulberry32(baseSeed + 100 + locIndex);
+    const crossTarget = Math.max(0, Math.round(
+      (choose2(members.length) - Object.values(byDept).reduce((s, d) => s + choose2(d.length), 0)) * 0.01
+    ));
+    for (let t = 0; t < crossTarget * 10 && t < 1000; t++) {
+      const a = members[Math.floor(crossDeptRng() * members.length)];
+      const b = members[Math.floor(crossDeptRng() * members.length)];
+      if (a === b || nodes[a].department === nodes[b].department) continue;
+      const k2 = key(a, b);
+      if (!adj.has(k2)) { adj.add(k2); edges.push({from: Math.min(a,b), to: Math.max(a,b)}); break; }
+    }
+  });
+}
+
+function choose2(n) { return n < 2 ? 0 : n * (n - 1) / 2; }
+
+// generate_hier_corp_graph — Realistic corporate hierarchy with star-like structure.
+// v5 additions:
+//   · RESIZE_M uses deliberately narrow spans (2–4) to simulate over-layered orgs
+//   · Writes span_of_control and hierarchy_depth to node objects after tree construction
+function generateHierCorp(nodes, seedTopo, scenarioId) {
+  const isResize = scenarioId === "RESIZE_M";
+  const rng  = mulberry32(seedTopo);
+  const rng2 = mulberry32(seedTopo + 7);   // informal ties
+  const rng3 = mulberry32(seedTopo + 4);   // bridges
+  const adj  = new Set();
+  const key  = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
+  const edges = [];
+
+  // Track children count (span) and depth per node
+  const spanCount  = new Int32Array(nodes.length);  // direct reports per manager
+  const depthArr   = new Int32Array(nodes.length);  // depth from CEO (CEO=0)
+
+  function addEdge(from, to) {
+    const k = key(from, to);
+    if (!adj.has(k) && from !== to) { adj.add(k); edges.push({from, to}); }
+  }
+
+  const byDept = {};
+  nodes.forEach((nd, idx) => {
+    if (!byDept[nd.department]) byDept[nd.department] = [];
+    byDept[nd.department].push(idx);
+  });
+
+  Object.values(byDept).forEach(arr => {
+    arr.sort((a, b) =>
+      nodes[b].level - nodes[a].level ||
+      nodes[b].tenure_years - nodes[a].tenure_years
+    );
+  });
+
+  // ── PHASE 1: Formal tree ──
+  const allIdxs = nodes.map((_, i) => i);
+  allIdxs.sort((a, b) =>
+    nodes[b].level - nodes[a].level || nodes[b].tenure_years - nodes[a].tenure_years
+  );
+  const ceoIdx = allIdxs[0];
+  depthArr[ceoIdx] = 0;
+
+  const deptNames = Object.keys(byDept).sort();
+  const deptVPs   = [];
+  const deptTrees = {};
+
+  deptNames.forEach(deptName => {
+    const sorted = byDept[deptName];
+    const vpIdx  = sorted[0];
+    if (vpIdx !== ceoIdx) {
+      addEdge(ceoIdx, vpIdx);
+      spanCount[ceoIdx]++;
+      depthArr[vpIdx] = 1;
+      deptVPs.push(vpIdx);
+    }
+    deptTrees[deptName] = sorted;
+  });
+
+  // Span-of-control table — RESIZE uses narrow spans to create over-deep hierarchies
+  function targetSpan(mgrLevel) {
+    if (isResize) {
+      // Narrow spans: 2-4 reports → many management layers
+      return { 6:2, 5:2, 4:3, 3:4, 2:5, 1:6 }[mgrLevel] || 3;
+    }
+    return { 6:3, 5:4, 4:6, 3:8, 2:10, 1:12 }[mgrLevel] || 8;
+  }
+
+  deptNames.forEach(deptName => {
+    const sorted = deptTrees[deptName];
+    if (sorted.length <= 1) return;
+    const root = sorted[0];
+    const queue = [root];
+    let nextChild = 1;
+
+    while (nextChild < sorted.length && queue.length > 0) {
+      const mgr  = queue.shift();
+      const span = targetSpan(nodes[mgr].level) + Math.floor(rng() * 2);
+      const end  = Math.min(nextChild + Math.max(1, span), sorted.length);
+
+      for (let ci = nextChild; ci < end; ci++) {
+        const child = sorted[ci];
+        addEdge(mgr, child);
+        spanCount[mgr]++;
+        depthArr[child] = depthArr[mgr] + 1;
+        if (nodes[child].level >= 3) queue.push(child);
+      }
+      nextChild = end;
+    }
+
+    if (nextChild < sorted.length) {
+      const managers = sorted.filter(i => nodes[i].level >= 3);
+      const fallback = managers.length > 0 ? managers : [root];
+      for (let ci = nextChild; ci < sorted.length; ci++) {
+        const mgr = fallback[Math.floor(rng() * fallback.length)];
+        addEdge(mgr, sorted[ci]);
+        spanCount[mgr]++;
+        depthArr[sorted[ci]] = depthArr[mgr] + 1;
+      }
+    }
+  });
+
+  // Write span_of_control and hierarchy_depth into node objects
+  nodes.forEach((nd, i) => {
+    if (nd.span_of_control !== undefined) nd.span_of_control = spanCount[i];
+    if (nd.hierarchy_depth !== undefined) nd.hierarchy_depth = depthArr[i];
+  });
+
+  // ── PHASE 2: Informal within-dept ties ──
+  deptNames.forEach(deptName => {
+    const sorted = deptTrees[deptName];
+    if (sorted.length < 3) return;
+    const deptSeedOffset = deptNames.indexOf(deptName);
+    const infRng = mulberry32(seedTopo + 3 + deptSeedOffset);
+    const target = Math.min(Math.round(Math.sqrt(sorted.length) * 2.0), 40);
+    let found = 0, att = 0;
+    while (found < target && att < target * 50) {
+      att++;
+      const ai = Math.floor(infRng() * sorted.length);
+      const bi = Math.floor(infRng() * sorted.length);
+      if (ai === bi) continue;
+      const a = sorted[ai], b = sorted[bi];
+      const avgLv = (nodes[a].level + nodes[b].level) / 12;
+      if (infRng() > avgLv * 1.8) continue;
+      const k2 = key(a, b);
+      if (!adj.has(k2)) { adj.add(k2); edges.push({from: a, to: b}); found++; }
+    }
+  });
+
+  // ── PHASE 3: Cross-dept leadership bridges ──
+  const seniors = allIdxs.filter(i => nodes[i].level >= 4);
+  const nBridges = Math.max(2, Math.round(seniors.length * 0.08));
+  for (let b = 0; b < nBridges; b++) {
+    if (seniors.length < 2) break;
+    const a    = seniors[Math.floor(rng3() * seniors.length)];
+    const dA   = nodes[a].department;
+    const pool = seniors.filter(s => nodes[s].department !== dA);
+    if (pool.length === 0) continue;
+    const t = pool[Math.floor(rng3() * pool.length)];
+    addEdge(a, t);
+  }
+
+  return edges;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LAYER DERIVATION
+// ═══════════════════════════════════════════════════════════════════
+
+// edge_weight_from_context — matches R exactly
+function edgeWeightFromContext(rng, layer, sameDept, sameLoc, sameLegacy) {
+  if (layer === "reporting") return 1.0;
+  if (layer === "trust")
+    return sameDept || sameLoc ? rbeta(rng, 3.5, 1.5) : rbeta(rng, 2.5, 2.0);
+  if (layer === "decision_influence")
+    return rbeta(rng, 3.2, 1.8);
+  if (sameLegacy === false)
+    return rbeta(rng, 1.8, 3.8);
+  if (sameDept || sameLoc)
+    return rbeta(rng, 3, 2);
+  return rbeta(rng, 2, 4);
+}
+
+// orient_edges
+// Convention (v5 corrected):
+//   reporting:          senior → junior  (manager to report)
+//   mentorship:         senior → junior  (mentor to mentee)
+//   decision_influence: senior → junior  (influence flows down)
+//   advice:             junior → senior  (seeker asks advisor — CORRECTED from v4 which had this backwards)
+//   tool_interaction:   random
+function orientEdge(fromIdx, toIdx, nodes, layer, rng) {
+  if (!DIRECTED_LAYERS.has(layer)) return {from: fromIdx, to: toIdx};
+  const fromLv = nodes[fromIdx].level, toLv = nodes[toIdx].level;
+  let swap = false;
+  if (layer === "reporting" || layer === "mentorship" || layer === "decision_influence") {
+    // Edge should point FROM senior TO junior; swap if fromIdx is the junior
+    swap = fromLv < toLv;
+  } else if (layer === "advice") {
+    // Edge points FROM seeker (junior) TO advisor (senior); swap if fromIdx is the senior
+    swap = fromLv > toLv;
+  } else {
+    swap = rng() < 0.5;
+  }
+  return swap ? {from: toIdx, to: fromIdx} : {from: fromIdx, to: toIdx};
+}
+
+// derive_layer_from_base — degree-dependent edge retention for realistic per-layer distributions.
+//
+// In real orgs, high-degree nodes (hubs, connectors) don't lose their central position
+// when you look at just the trust layer or just the advice layer. Flat keep-prob destroys
+// the hub structure — a node with 40 edges ends up with ~14 per layer, same as a node
+// with 6 that keeps ~2.  The result: flat Poisson-ish degree distribution in every layer.
+//
+// Fix: keep-prob scales with node degree via a "rich-gets-richer" curve:
+//   effective_prob = base_prob * (1 + hub_boost * normalized_degree)
+//   hub_boost varies by layer (trust/advice are selective; communication broad)
+// This preserves the heavy tail in each layer independently.
+function deriveLayerEdges(baseEdges, nodes, layer, seed) {
+  const baseKeep = LAYER_KEEP_PROB[layer] ?? 0.5;
+  const keepRng   = mulberry32(seed);
+  const orientRng = mulberry32(seed + 100);
+  const weightRng = mulberry32(seed + 50);
+
+  // Compute per-node degree in base graph for degree-dependent retention
+  const deg = new Int32Array(nodes.length);
+  baseEdges.forEach(e => { deg[e.from]++; deg[e.to]++; });
+  const maxDeg = deg.reduce((a,b)=>a>b?a:b, 1);
+
+  // Hub boost: how much does high degree increase keep probability?
+  // Selective layers (trust, mentorship) are less hub-dominated; broad layers more so
+  const HUB_BOOST = {
+    communication: 0.60, trust: 0.30, advice: 0.45, collaboration: 0.50,
+    innovation: 0.40, mentorship: 0.20, decision_influence: 0.55,
+    reporting: 0.0,  tool_interaction: 0.35, energy: 0.25
+  };
+  const hubBoost = HUB_BOOST[layer] ?? 0.35;
+
+  const result = [];
+  for (const e of baseEdges) {
+    if (layer === "reporting") {
+      // Reporting: keep all base edges (keep-prob = 1.0)
+    } else {
+      // Degree-dependent keep probability
+      const degI = deg[e.from] / maxDeg;
+      const degJ = deg[e.to]   / maxDeg;
+      const maxNodeDeg = Math.max(degI, degJ);
+      const effectiveKeep = Math.min(0.98, baseKeep * (1 + hubBoost * maxNodeDeg));
+      if (keepRng() >= effectiveKeep) continue;
+    }
+
+    const ni = nodes[e.from], nj = nodes[e.to];
+    const sameDept   = ni.department === nj.department;
+    const sameLoc    = ni.location   === nj.location;
+    const sameLegacy = (ni.legacy_company != null && nj.legacy_company != null)
+                     ? ni.legacy_company === nj.legacy_company : null;
+
+    const weight   = edgeWeightFromContext(weightRng, layer, sameDept, sameLoc, sameLegacy);
+    const oriented = orientEdge(e.from, e.to, nodes, layer, orientRng);
+
+    result.push({
+      from:    nodes[oriented.from].id,
+      to:      nodes[oriented.to].id,
+      fromIdx: oriented.from,
+      toIdx:   oriented.to,
+      weight:  Math.round(weight * 1000) / 1000,
+      layer,
+      directed:       DIRECTED_LAYERS.has(layer),
+      same_dept:      sameDept,
+      same_location:  sameLoc,
+      same_legacy:    sameLegacy
+    });
+  }
+  return result;
+}
+
+// apply_scenario_edge_modifiers
+function applyScenarioEdgeModifiers(nodes, edges, scenarioId, seedAttr) {
+  const idToIdx = Object.fromEntries(nodes.map((nd, i) => [nd.id, i]));
+
+  // ── AI_M: high-adoption humans connect to AI agents via tool_interaction ──
+  if (scenarioId === "AI_M") {
+    const humanAI = nodes.filter(n => !n.is_non_human).map(n => n.ai_adoption_score);
+    const q70 = quantile(humanAI, 0.70);
+    const humans = nodes.filter(n => !n.is_non_human && n.ai_adoption_score >= q70);
+    const agents = nodes.filter(n => n.is_non_human);
+    if (humans.length > 0 && agents.length > 0) {
+      const aiRng = mulberry32(seedAttr + 30);
+      humans.forEach(h => {
+        const ag = agents[Math.floor(aiRng() * agents.length)];
+        edges.push({
+          from: h.id, to: ag.id,
+          fromIdx: idToIdx[h.id], toIdx: idToIdx[ag.id],
+          weight: Math.round(rbeta(aiRng, 4, 2) * 1000) / 1000,
+          layer: "tool_interaction", directed: true,
+          same_dept: false, same_location: false, same_legacy: null
+        });
+      });
+    }
+  }
+
+  // ── CULTURE_M: culture carriers generate cross-boundary energy ties ──
+  // This creates the community-of-practice signal cutting across the block structure
+  if (scenarioId === "CULTURE_M") {
+    const carriers = nodes.filter(n => n.culture_carrier);
+    const nExtra   = Math.max(10, Math.round(nodes.length * 0.04));
+    addUniqueEdgesInPlace(edges, nodes, carriers, nExtra, "energy", seedAttr + 31, 0.35, null, idToIdx);
+  }
+
+  // ── MA_M: innovation ties slightly prefer cross-legacy (knowledge arbitrage) ──
+  if (scenarioId === "MA_M") {
+    const nExtra = Math.max(12, Math.round(nodes.length * 0.02));
+    addUniqueEdgesInPlace(edges, nodes, nodes, nExtra, "innovation", seedAttr + 32, 0.35, -0.25, idToIdx);
+  }
+
+  // ── REORG_M: thin collaboration/trust edges that cross the new squad boundary ──
+  // Post-reorg, informal ties follow the old structure (team_before), not the new one.
+  // Cross-squad ties in collaboration layer are reduced by 50% to show the collaboration debt.
+  if (scenarioId === "REORG_M") {
+    const reorgRng = mulberry32(seedAttr + 33);
+    const toRemove = [];
+    edges.forEach((e, idx) => {
+      if (e.layer !== "collaboration" && e.layer !== "trust") return;
+      const ni = nodes[e.fromIdx], nj = nodes[e.toIdx];
+      if (!ni || !nj) return;
+      if (ni.team_after && nj.team_after && ni.team_after !== nj.team_after) {
+        // 55% of cross-squad informal ties are thinned post-reorg
+        if (reorgRng() < 0.55) toRemove.push(idx);
+      }
+    });
+    for (let i = toRemove.length - 1; i >= 0; i--) edges.splice(toRemove[i], 1);
+  }
+}
+
+// addUniqueEdgesInPlace — matches add_unique_edges() + sample_structured_pairs()
+function addUniqueEdgesInPlace(edges, allNodes, poolNodes, nEdges, layer, seed, sameDeptBias, sameLegacyBias, idToIdx) {
+  if (poolNodes.length < 2 || nEdges <= 0) return;
+  const rng       = mulberry32(seed);
+  const weightRng = mulberry32(seed + 1);
+  const orientRng = mulberry32(seed + 2);
+  const existingKeys = new Set(edges.map(e => {
+    const f = e.fromIdx, t = e.toIdx;
+    return `${Math.min(f,t)}|${Math.max(f,t)}|${e.layer}`;
+  }));
+
+  // Fix 6: Cache candidates and probability arrays per source node so the
+  // O(n) filter + map is not repeated on every attempt for the same ni.
+  const candidateCache = new Map(); // ni.id -> {candidates, probs}
+  function getCandidates(ni) {
+    if (candidateCache.has(ni.id)) return candidateCache.get(ni.id);
+    const candidates = poolNodes.filter(nj => nj.id !== ni.id);
+    const probs = candidates.map(nj => {
+      const sameDept = nj.department === ni.department;
+      const sameLoc  = nj.location   === ni.location;
+      const sameLeg  = (nj.legacy_company != null && ni.legacy_company != null)
+                     ? nj.legacy_company === ni.legacy_company : null;
+      let p = sameDept ? sameDeptBias : 1 - sameDeptBias;
+      p += sameLoc ? 0.10 : 0;
+      if (sameLegacyBias != null && sameLeg != null) {
+        p += sameLeg ? sameLegacyBias : -sameLegacyBias;
+      }
+      return Math.max(0.01, Math.min(0.99, p));
+    });
+    const entry = {candidates, normP: normaliseProb(probs)};
+    candidateCache.set(ni.id, entry);
+    return entry;
+  }
+
+  let found = 0;
+  const maxAttempts = Math.max(250, nEdges * 30);
+  for (let att = 0; att < maxAttempts && found < nEdges; att++) {
+    const i = Math.floor(rng() * poolNodes.length);
+    const ni = poolNodes[i];
+    const niIdx = idToIdx[ni.id];
+    const {candidates, normP} = getCandidates(ni);
+    if (candidates.length === 0) continue;
+    const nj = weightedSample(rng, candidates, normP);
+    const njIdx = idToIdx[nj.id];
+    const edgeKey = `${Math.min(niIdx,njIdx)}|${Math.max(niIdx,njIdx)}|${layer}`;
+    if (existingKeys.has(edgeKey)) continue;
+    existingKeys.add(edgeKey);
+
+    const sameDept = nj.department === ni.department;
+    const sameLoc  = nj.location   === ni.location;
+    const sameLeg  = (nj.legacy_company != null && ni.legacy_company != null)
+                   ? nj.legacy_company === ni.legacy_company : null;
+    const weight = edgeWeightFromContext(weightRng, layer, sameDept, sameLoc, sameLeg);
+    const oriented = orientEdge(niIdx, njIdx, allNodes, layer, orientRng);
+    edges.push({
+      from: allNodes[oriented.from].id, to: allNodes[oriented.to].id,
+      fromIdx: oriented.from, toIdx: oriented.to,
+      weight: Math.round(weight * 1000) / 1000,
+      layer, directed: DIRECTED_LAYERS.has(layer),
+      same_dept: sameDept, same_location: sameLoc, same_legacy: sameLeg
+    });
+    found++;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// INDEPENDENT LAYER GENERATORS
+// Trust and mentorship are NOT derived from the base topology —
+// they represent genuinely independent relationship processes.
+// A quiet person can have deep trust ties with a few colleagues
+// without those pairs appearing in the communication base graph.
+// ═══════════════════════════════════════════════════════════════════
+
+// generate_trust_layer — sparse, independent, seniority-homophilous
+// Trust forms between people with similar levels and shared context (dept or location).
+// Target: avg degree ~2.5 (real trust networks are sparse and selective).
+function generateTrustLayer(nodes, seed) {
+  const rng  = mulberry32(seed);
+  const rng2 = mulberry32(seed + 1);
+  const idToIdx = Object.fromEntries(nodes.map((nd, i) => [nd.id, i]));
+  const n    = nodes.length;
+  const adj  = new Set();
+  const key  = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
+  const edges = [];
+
+  // Target ~2.5 trust ties per person (sparse — real trust networks are thin)
+  const targetEdges = Math.round(n * 2.5 / 2);
+  let found = 0, att = 0;
+  const maxAtt = targetEdges * 40;
+
+  while (found < targetEdges && att < maxAtt) {
+    att++;
+    const i = Math.floor(rng() * n);
+    const j = Math.floor(rng() * n);
+    if (i === j) continue;
+    const k = key(i, j);
+    if (adj.has(k)) continue;
+    const ni = nodes[i], nj = nodes[j];
+
+    // Acceptance probability: same dept or location gets a boost, level similarity helps
+    const sameDept  = ni.department === nj.department;
+    const sameLoc   = ni.location   === nj.location;
+    const lvlDiff   = Math.abs(ni.level - nj.level);
+    let p = 0.10;
+    if (sameDept) p += 0.25;
+    if (sameLoc)  p += 0.10;
+    if (lvlDiff === 0) p += 0.15;
+    if (lvlDiff <= 1)  p += 0.08;
+    if (lvlDiff >= 3)  p -= 0.08; // cross-level trust is rarer
+
+    if (rng2() < p) {
+      adj.add(k);
+      const weight = edgeWeightFromContext(rng2, "trust", sameDept, sameLoc, null);
+      edges.push({from: i, to: j, weight, sameDept, sameLoc, sameLegacy: null});
+      found++;
+    }
+  }
+  return edges;
+}
+
+// generate_mentorship_layer — very sparse, directed upward, crosses depts occasionally
+// Mentorship is rarer than trust: avg degree ~1.2 (most people have 0–2 mentors)
+function generateMentorshipLayer(nodes, seed) {
+  const rng  = mulberry32(seed);
+  const rng2 = mulberry32(seed + 3);
+  const n    = nodes.length;
+  const adj  = new Set();
+  const key  = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
+  const edges = [];
+
+  // Only level ≥ 4 can be mentors; level ≤ 3 can be mentees
+  const mentors = nodes.map((nd, i) => i).filter(i => nodes[i].level >= 4);
+  const mentees = nodes.map((nd, i) => i).filter(i => nodes[i].level <= 3);
+  if (mentors.length === 0 || mentees.length === 0) return edges;
+
+  const targetEdges = Math.round(Math.min(mentees.length * 0.4, n * 1.2 / 2));
+
+  mentees.forEach(mi => {
+    // ~40% of ICs/managers have a mentor
+    if (rng() > 0.40) return;
+    // Prefer mentor in same dept, but 30% chance of cross-dept mentor
+    const sameDeptMentors = mentors.filter(m =>
+      nodes[m].department === nodes[mi].department && nodes[m].level > nodes[mi].level);
+    const pool = (rng() < 0.30 || sameDeptMentors.length === 0)
+      ? mentors.filter(m => nodes[m].level > nodes[mi].level)
+      : sameDeptMentors;
+    if (pool.length === 0) return;
+    const mentor = pool[Math.floor(rng2() * pool.length)];
+    const k = key(mi, mentor);
+    if (adj.has(k)) return;
+    adj.add(k);
+    const sameDept = nodes[mi].department === nodes[mentor].department;
+    const sameLoc  = nodes[mi].location   === nodes[mentor].location;
+    const weight   = edgeWeightFromContext(rng2, "mentorship", sameDept, sameLoc, null);
+    // Direction: mentee → mentor (junior seeks senior)
+    edges.push({from: mi, to: mentor, weight, sameDept, sameLoc, sameLegacy: null});
+  });
+
+  return edges;
+}
+
+// generate_layers — full pipeline
+// Trust and mentorship use independent generators; other layers derive from base topology.
+function generateLayers(baseEdges, nodes, scenarioId, activeLayers, seedAttr) {
+  const edges   = [];
+  const idToIdx = Object.fromEntries(nodes.map((nd, i) => [nd.id, i]));
+  const INDEPENDENT_LAYERS = new Set(["trust", "mentorship"]);
+
+  activeLayers.forEach((layer, i) => {
+    const layerSeed = seedAttr + (i + 1);
+
+    if (layer === "trust") {
+      const rawEdges = generateTrustLayer(nodes, layerSeed);
+      const orientRng = mulberry32(layerSeed + 100);
+      rawEdges.forEach(e => {
+        edges.push({
+          from:    nodes[e.from].id,
+          to:      nodes[e.to].id,
+          fromIdx: e.from,
+          toIdx:   e.to,
+          weight:  Math.round(e.weight * 1000) / 1000,
+          layer:   "trust",
+          directed: false,
+          same_dept:     e.sameDept,
+          same_location: e.sameLoc,
+          same_legacy:   e.sameLegacy
+        });
+      });
+      return;
+    }
+
+    if (layer === "mentorship") {
+      const rawEdges = generateMentorshipLayer(nodes, layerSeed);
+      rawEdges.forEach(e => {
+        edges.push({
+          from:    nodes[e.from].id,
+          to:      nodes[e.to].id,
+          fromIdx: e.from,
+          toIdx:   e.to,
+          weight:  Math.round(e.weight * 1000) / 1000,
+          layer:   "mentorship",
+          directed: true,
+          same_dept:     e.sameDept,
+          same_location: e.sameLoc,
+          same_legacy:   e.sameLegacy
+        });
+      });
+      return;
+    }
+
+    // All other layers: derive from base topology
+    const layerEdges = deriveLayerEdges(baseEdges, nodes, layer, layerSeed);
+    layerEdges.forEach(e => edges.push(e));
+  });
+
+  applyScenarioEdgeModifiers(nodes, edges, scenarioId, seedAttr);
+
+  // Reporting guarantee
+  if (activeLayers.includes("reporting") && !edges.some(e => e.layer === "reporting")) {
+    const repEdges = deriveLayerEdges(baseEdges, nodes, "reporting", seedAttr + 99);
+    repEdges.forEach(e => edges.push(e));
+  }
+
+  return edges;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GRAPH METRICS
+// ═══════════════════════════════════════════════════════════════════
+function computeMetrics(nodes, edges) {
+  const n = nodes.length;
+  const idToIdx = Object.fromEntries(nodes.map((nd, i) => [nd.id, i]));
+
+  const adjU = Array.from({length: n}, () => []);
+  const seen = new Set();
+  let edgeCount = 0;
+
+  edges.forEach(e => {
+    const fi = e.fromIdx ?? idToIdx[e.from];
+    const ti = e.toIdx  ?? idToIdx[e.to];
+    if (fi == null || ti == null || fi === ti) return;
+    const k = fi < ti ? `${fi}|${ti}` : `${ti}|${fi}`;
+    if (!seen.has(k)) {
+      seen.add(k); edgeCount++;
+      adjU[fi].push(ti); adjU[ti].push(fi);
+    }
+  });
+
+  const degree = adjU.map(a => a.length);
+  const avgDeg = degree.reduce((a, b) => a + b, 0) / Math.max(n, 1);
+  const maxDeg = degree.reduce((a,b)=>a>b?a:b, 0);
+  const density = n < 2 ? 0 : edgeCount / choose2(n);
+
+  // Connected components (BFS)
+  const comp = new Int32Array(n).fill(-1);
+  let compCount = 0;
+  const compSizes = [];
+  for (let s = 0; s < n; s++) {
+    if (comp[s] >= 0) continue;
+    const q = [s]; let h = 0;
+    comp[s] = compCount;
+    compSizes.push(0);
+    while (h < q.length) {
+      const v = q[h++]; compSizes[compCount]++;
+      adjU[v].forEach(u => { if (comp[u] < 0) { comp[u] = compCount; q.push(u); } });
+    }
+    compCount++;
+  }
+  const giantSize = compSizes.reduce((a,b)=>a>b?a:b, 0);
+  const giantId   = compSizes.indexOf(giantSize);
+  const giantFrac = giantSize / Math.max(n, 1);
+
+  // Global clustering
+  let triNum = 0, triDen = 0;
+  for (let v = 0; v < n; v++) {
+    const dv = degree[v]; if (dv < 2) continue;
+    triDen += choose2(dv);
+    const nbSet = new Set(adjU[v]);
+    adjU[v].forEach(u => { adjU[u].forEach(w => { if (w !== v && nbSet.has(w)) triNum++; }); });
+  }
+  const clustering = triDen > 0 ? (triNum / 2) / triDen : 0;
+
+  // Betweenness (Brandes, sampled on giant component)
+  const btw = new Float64Array(n);
+  const giantNodes = [];
+  for (let i = 0; i < n; i++) if (comp[i] === giantId) giantNodes.push(i);
+  const sampleSize = Math.min(giantNodes.length, 120);
+  const step = Math.max(1, Math.floor(giantNodes.length / sampleSize));
+
+  for (let si = 0; si < giantNodes.length; si += step) {
+    const s = giantNodes[si];
+    const pred   = Array.from({length: n}, () => []);
+    const sigma  = new Float64Array(n);
+    const dist   = new Int32Array(n).fill(-1);
+    const delta  = new Float64Array(n);
+    const stack  = [];
+    sigma[s] = 1; dist[s] = 0;
+    const queue = [s]; let qh = 0;
+    while (qh < queue.length) {
+      const v = queue[qh++]; stack.push(v);
+      adjU[v].forEach(w => {
+        if (dist[w] < 0) { queue.push(w); dist[w] = dist[v] + 1; }
+        if (dist[w] === dist[v] + 1) { sigma[w] += sigma[v]; pred[w].push(v); }
+      });
+    }
+    while (stack.length) {
+      const w = stack.pop();
+      pred[w].forEach(v => { delta[v] += (sigma[v] / sigma[w]) * (1 + delta[w]); });
+      if (w !== s) btw[w] += delta[w];
+    }
+  }
+  const normF = n > 2 ? 1 / ((n - 1) * (n - 2)) : 1;
+  const btwNorm = Array.from(btw).map(b => b * normF * (giantNodes.length / Math.max(n, 1)));
+
+  // Articulation points (Tarjan iterative DFS)
+  const artPoints = new Set();
+  const disc = new Int32Array(n).fill(-1);
+  const low  = new Int32Array(n);
+  const par  = new Int32Array(n).fill(-1);
+  let timer  = 0;
+  const childCount = new Int32Array(n);
+  for (let root = 0; root < n; root++) {
+    if (disc[root] >= 0) continue;
+    const dfsStack = [[root, 0]];
+    while (dfsStack.length) {
+      const [u, ni2] = dfsStack[dfsStack.length - 1];
+      if (disc[u] < 0) { disc[u] = low[u] = timer++; }
+      let advanced = false;
+      for (let i = ni2; i < adjU[u].length; i++) {
+        const v = adjU[u][i];
+        if (disc[v] < 0) {
+          par[v] = u; childCount[u]++;
+          dfsStack[dfsStack.length - 1][1] = i + 1;
+          dfsStack.push([v, 0]);
+          advanced = true; break;
+        } else if (v !== par[u]) {
+          low[u] = Math.min(low[u], disc[v]);
+        }
+      }
+      if (!advanced) {
+        dfsStack.pop();
+        if (par[u] >= 0) {
+          low[par[u]] = Math.min(low[par[u]], low[u]);
+          if (par[par[u]] < 0 && childCount[par[u]] > 1) artPoints.add(par[u]);
+          if (par[par[u]] >= 0 && low[u] >= disc[par[u]]) artPoints.add(par[u]);
+        }
+      }
+    }
+  }
+
+  // Group metrics (E-I index per department)
+  const depts = [...new Set(nodes.map(n => n.department))].sort();
+  const groupMetrics = depts.map(dept => {
+    let internal = 0, external = 0;
+    seen.forEach(k => {
+      const [fi, ti] = k.split('|').map(Number);
+      const fd = nodes[fi].department, td = nodes[ti].department;
+      if (fd === dept && td === dept) internal++;
+      else if (fd === dept || td === dept) external++;
+    });
+    const ei = (external + internal) === 0 ? null
+              : (external - internal) / (external + internal);
+    return {dept, internal, external, ei: ei != null ? Math.round(ei * 1000) / 1000 : null};
+  });
+
+  return {n, edgeCount, rawEdgeCount: edges.length, density, avgDeg, maxDeg, clustering, compCount, giantFrac, btwNorm, degree, artPoints, groupMetrics, comp, giantId};
+}
+
+function validateScenario(scenarioId, nodes, edges, metrics) {
+  const {density, clustering, compCount, n, artPoints, groupMetrics, btwNorm, degree} = metrics;
+  const checks = [];
+
+  checks.push({id:"density_band", name:"Density 0.01–0.20",
+    val: density.toFixed(4), pass: density >= 0.01 && density <= 0.20});
+
+  const q90btw = quantile(btwNorm, 0.9);
+  const highBrokers = btwNorm.filter(b => b > q90btw).length;
+  checks.push({id:"high_brokers", name:"≥3 high-betweenness actors",
+    val: highBrokers, pass: highBrokers >= 3});
+
+  const eis = groupMetrics.map(g => g.ei).filter(e => e != null);
+  const meanEI = eis.reduce((a, b) => a + b, 0) / Math.max(eis.length, 1);
+  const sdEI = eis.length > 1
+    ? Math.sqrt(eis.reduce((a, b) => a + (b - meanEI)**2, 0) / (eis.length - 1))
+    : 0;
+  checks.push({id:"group_variation", name:"E-I index variation (sd>0.05)",
+    val: sdEI.toFixed(3), pass: sdEI > 0.05});
+
+  const compLimit = Math.max(5, Math.round(n * 0.01));
+  checks.push({id:"components", name:`Components ≤${compLimit}`,
+    val: compCount, pass: compCount <= compLimit});
+
+  // Degree heterogeneity: variance/mean ratio > 1 indicates non-Poisson (power-law-ish)
+  // For ER this will be ~1; for BA/hier it should be 3-20+
+  if (degree && degree.length > 0) {
+    const meanDeg = degree.reduce((a,b)=>a+b,0) / degree.length;
+    const varDeg  = degree.reduce((a,b)=>a+(b-meanDeg)**2,0) / degree.length;
+    const vmr     = meanDeg > 0 ? varDeg / meanDeg : 0;
+    checks.push({id:"degree_heterogeneity", name:"Degree VMR > 1.5 (non-Poisson)",
+      val: vmr.toFixed(2), pass: vmr > 1.5});
+  }
+
+  if (scenarioId === "DEMO_M") {
+    const minEI = eis.reduce((a,b)=>a<b?a:b, Infinity);
+    const maxEI = eis.reduce((a,b)=>a>b?a:b, -Infinity);
+    checks.push({id:"demo_silo",  name:"Siloed dept (E-I < -0.4)",  val: minEI.toFixed(3), pass: minEI < -0.4});
+    checks.push({id:"demo_open",  name:"Open dept (E-I > 0)",       val: maxEI.toFixed(3), pass: maxEI > 0});
+    checks.push({id:"demo_art",   name:"≥1 articulation point",     val: artPoints.size,   pass: artPoints.size >= 1});
+  }
+
+  if (scenarioId === "AI_M") {
+    const toolEdges = edges.filter(e => e.layer === "tool_interaction").length;
+    const champions = nodes.filter(n => n.adoption_champion).length;
+    checks.push({id:"tool_layer",   name:"Tool-interaction layer present", val: toolEdges, pass: toolEdges > 0});
+    checks.push({id:"ai_champions", name:"Adoption champions present",     val: champions, pass: champions > 0});
+  }
+
+  if (scenarioId === "MA_M") {
+    const hasLegacy = nodes[0]?.legacy_company != null;
+    const crossEdges = edges.filter(e => e.same_legacy === false);
+    const crossRatio = edges.length > 0 ? crossEdges.length / edges.length : 0;
+    checks.push({id:"legacy_attr",  name:"Legacy attribute present",   val: hasLegacy ? "yes" : "no", pass: hasLegacy});
+    checks.push({id:"cross_legacy", name:"Cross-legacy tie ratio >0.05", val: crossRatio.toFixed(3), pass: crossRatio > 0.05});
+  }
+
+  return checks;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+// USAGE TELEMETRY — silent, never blocks the user (v5)
+// ═══════════════════════════════════════════════════════════════════
+const PING_URL = 'https://script.google.com/macros/s/AKfycbyRq-hszxU3xX7YmtoA1FhzY2jQ0r_Ec8Pnm3RECuE-0cFrKQOr3q52sw2qVqkZfFAV/exec';
+
+async function pingHome(net) {
+  // Step 1: geo lookup — best-effort, ignored if offline/blocked
+  let ipData = {};
+  try {
+    const geoRes = await fetch('https://ipapi.co/json/');
+    ipData = await geoRes.json();
+  } catch (_) {}
+
+  // Step 2: fire as GET (no-cors) — zero CORS preflight, no error surfaced to user
+  try {
+    const {nodes, edges, scenarioId, topology, templateId, activeLayers, metrics, event_override} = net;
+    const params = new URLSearchParams({
+      app:          'ona-benchmark',
+      event:        event_override || 'network_generated',
+      scenario:     scenarioId,
+      topology:     topology,
+      template:     templateId,
+      n_nodes:      nodes.length,
+      n_edges:      edges.length,
+      n_layers:     activeLayers.length,
+      layers:       activeLayers.join('|'),
+      density:      (metrics.density * 100).toFixed(2),
+      avg_degree:   metrics.avgDeg.toFixed(1),
+      clustering:   (metrics.clustering * 100).toFixed(1),
+      components:   metrics.compCount,
+      lang:         navigator.language,
+      tz:           Intl.DateTimeFormat().resolvedOptions().timeZone,
+      screen:       `${screen.width}x${screen.height}`,
+      referrer:     document.referrer || 'direct',
+      ua:           navigator.userAgent,
+      ts:           new Date().toISOString(),
+      ip:           ipData.ip           || '',
+      city:         ipData.city         || '',
+      country:      ipData.country_name || '',
+      org:          ipData.org          || '',
+    });
+    fetch(`${PING_URL}?${params.toString()}`, { mode: 'no-cors' });
+  } catch (_) {}
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MAIN PIPELINE — Global state
+// ═══════════════════════════════════════════════════════════════════
+let currentNetwork = null;
+let simulation = null, zoomObj = null;
+let _nodeData = null, _allLinkData = null;  // promoted for simulation restarts
+let frozen = false;
+// Hook set by renderNetwork so applyLayerVisibility can rebuild the neighbour
+// map without monkey-patching itself. Reset to a no-op on each new render.
+let _currentRebuildNeighbourMap = function() {};
+
+// ═══════════════════════════════════════════════════════════════════
+// LAYER VISUAL PROPERTIES
+// ═══════════════════════════════════════════════════════════════════
+const LAYER_COLORS = {
+  communication:"#4f46e5", trust:"#7c3aed", advice:"#059669",
+  collaboration:"#d97706", innovation:"#db2777", mentorship:"#0d9488",
+  decision_influence:"#e11d48", reporting:"#6d28d9",
+  tool_interaction:"#0284c7", energy:"#ea580c"
+};
+const LAYER_DASH = {
+  communication: null, reporting: null,
+  trust:              "7,3",
+  advice:             "3,3",
+  decision_influence: "3,3",
+  collaboration:      "9,2,2,2",
+  innovation:         "9,2,2,2",
+  mentorship:         "2,5",
+  tool_interaction:   "1,5",
+  energy:             "11,3"
+};
+const LAYER_WIDTH = {
+  reporting:2.0, communication:1.4, trust:1.2, advice:1.2,
+  decision_influence:1.1, collaboration:1.0, innovation:1.0,
+  mentorship:0.9, tool_interaction:0.9, energy:0.8
+};
+const DEPT_COLORS = [
+  "#4f46e5","#7c3aed","#059669","#e11d48","#d97706","#db2777",
+  "#0d9488","#0284c7","#ea580c","#6d28d9","#065f46","#1e40af"
+];
+
+// FIX 4 & 5 & 9 & 10: Layer visibility — store as module-level state.
+// All layer-filter handlers read opacity from slider at call time, never from stale closures.
+let layerVisible = {};
+let soloLayer    = null;
+
+// Helper: always read current opacity from slider
+function getCurrentOpacity() {
+  return parseInt(document.getElementById("op-slider").value, 10) / 100;
+}
+
+// Helper: build linkGroups map from current DOM (used by all handlers needing to update SVG)
+function getLinkGroupsFromDOM() {
+  const allGroups = {};
+  document.querySelectorAll(".lg").forEach(g => {
+    const l = [...g.classList].find(c => c.startsWith("lg-") && c !== "lg")?.slice(3);
+    if (l) allGroups[l] = d3.select(g).selectAll("line");
+  });
+  return allGroups;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SYNTHETIC OUTCOMES
+// ═══════════════════════════════════════════════════════════════════
+function computeOutcomes(nodes, edges, metrics, scenarioId, seedAttr) {
+  const {degree, btwNorm, artPoints} = metrics;
+  const n = nodes.length;
+
+  const btwRanked = btwNorm.slice().map((b,i)=>({b,i})).sort((a,z)=>z.b-a.b);
+  const closeProxy = new Float64Array(n);
+  btwRanked.forEach((x,rank)=>{ closeProxy[x.i] = 1 - rank/Math.max(n-1,1); });
+
+  const trustDeg = new Int32Array(n);
+  const commDeg  = new Int32Array(n);
+  const idToIdx  = Object.fromEntries(nodes.map((nd,i)=>[nd.id,i]));
+  edges.forEach(e => {
+    const fi = e.fromIdx ?? idToIdx[e.from];
+    const ti = e.toIdx  ?? idToIdx[e.to];
+    if (fi==null||ti==null) return;
+    if (e.layer==="trust")         { trustDeg[fi]++; trustDeg[ti]++; }
+    if (e.layer==="communication") { commDeg[fi]++;  commDeg[ti]++; }
+  });
+
+  const sc01 = arr => {
+    const fin = arr.filter(v=>isFinite(v));
+    if (!fin.length) return arr.map(()=>0.5);
+    const mn = fin.reduce((a,b)=>a<b?a:b, Infinity), mx = fin.reduce((a,b)=>a>b?a:b, -Infinity);
+    return arr.map(v => mx===mn ? 0.5 : Math.max(0,(v-mn)/(mx-mn)));
+  };
+
+  const sTrust = sc01(Array.from(trustDeg));
+  const sComm  = sc01(Array.from(commDeg));
+  const sClose = sc01(Array.from(closeProxy));
+  const sBtw   = sc01(btwNorm);
+  const sConst = sc01(btwNorm.map(b=>1-b));
+
+  // Fill betweenness-dependent key_person_risk_score for SUCCESSION_M
+  if (scenarioId === "SUCCESSION_M") {
+    const sBtwArr = sc01(btwNorm);
+    nodes.forEach((nd, i) => {
+      if (nd.key_person_risk_score !== undefined) {
+        nd.key_person_risk_score = Math.round(softClip(
+          (nd.level / 6) * 0.35 + sBtwArr[i] * 0.45 + (nd.performance_score / 5) * 0.20,
+          0, 1) * 1000) / 1000;
+      }
+    });
+  }
+
+  const rng = mulberry32(seedAttr ^ 0xF00D);
+  const outcomes = nodes.map((nd, i) => {
+    const engagement = softClip(
+      0.35 + 0.25*sTrust[i] + 0.20*sClose[i] - 0.15*sConst[i] + (rng()-0.5)*0.06, 0, 1);
+    const innovation = softClip(
+      0.25 + 0.25*sComm[i] + 0.25*sBtw[i] + 0.15*(nd.ai_adoption_score||0.5) + (rng()-0.5)*0.06, 0, 1);
+    const burnout = softClip(
+      0.15 + 0.30*sComm[i] + 0.20*sBtw[i] - 0.15*sTrust[i] + (rng()-0.5)*0.06, 0, 1);
+
+    const out = {
+      person_id:        nd.id,
+      engagement_score: Math.round(engagement*1000)/1000,
+      innovation_score: Math.round(innovation*1000)/1000,
+      burnout_risk:     Math.round(burnout*1000)/1000
+    };
+
+    if (scenarioId === "AI_M") {
+      out.adoption_velocity = Math.round(softClip(
+        (nd.ai_adoption_score||0.5)*0.5 + (nd.change_readiness||0.5)*0.4 + (rng()-0.5)*0.06,
+        0, 1)*1000)/1000;
+    }
+
+    if (scenarioId === "RESIZE_M") {
+      // Overload risk: high comm degree + high span → burnout signal
+      out.overload_risk = Math.round(softClip(
+        burnout * 0.6 + (nd.span_of_control > 0 ? Math.min(1, nd.span_of_control / 12) * 0.4 : 0),
+        0, 1)*1000)/1000;
+    }
+
+    if (scenarioId === "REORG_M") {
+      // Transition stress: cross-squad people with low change_readiness hit hardest
+      const crossSquad = nd.team_before && nd.team_after &&
+        nd.team_before !== nd.team_after ? 1 : 0; // team_before = dept, team_after = squad
+      out.transition_stress = Math.round(softClip(
+        burnout * 0.5 + (1 - (nd.change_readiness||0.5)) * 0.3 + crossSquad * 0.20,
+        0, 1)*1000)/1000;
+    }
+
+    return out;
+  });
+
+  return outcomes;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PLATFORM PAYLOAD EXPORT  (mirrors R build_platform_payload())
+// ═══════════════════════════════════════════════════════════════════
+function exportPlatformPayload() {
+  if (!currentNetwork) return;
+  const {nodes, edges, metrics, validation, outcomes, scenarioId, topology, templateId, activeLayers, seedTopo} = currentNetwork;
+  const sc = SCENARIO_REGISTRY[scenarioId] || {title: scenarioId, tags:[]};
+
+  const nodePayload = nodes.map((nd,i) => ({
+    ...nd,
+    degree: metrics.degree[i],
+    betweenness: Math.round(metrics.btwNorm[i]*1e6)/1e6,
+    is_articulation: metrics.artPoints.has(i)
+  }));
+
+  const payload = {
+    generated_at: new Date().toISOString(),
+    scenario: scenarioId,
+    meta: {
+      title: sc.title || scenarioId,
+      topology_primary: topology,
+      template: templateId,
+      layers: activeLayers,
+      seed_topology: seedTopo,
+      org_size: nodes.length
+    },
+    nodes: nodePayload,
+    edges: edges.map(e=>({
+      from: e.from, to: e.to,
+      weight: e.weight, layer: e.layer,
+      directed: e.directed,
+      same_dept: e.same_dept,
+      same_location: e.same_location,
+      same_legacy: e.same_legacy ?? null
+    })),
+    metrics: {
+      network: {
+        node_count: metrics.n,
+        edge_count: metrics.edgeCount,
+        density: Math.round(metrics.density*1e4)/1e4,
+        avg_degree: Math.round(metrics.avgDeg*100)/100,
+        max_degree: metrics.maxDeg,
+        clustering: Math.round(metrics.clustering*1e4)/1e4,
+        component_count: metrics.compCount,
+        giant_component_share: Math.round(metrics.giantFrac*1000)/1000,
+        articulation_point_count: metrics.artPoints.size
+      },
+      groups: metrics.groupMetrics.map(g=>({
+        department: g.dept, internal: g.internal,
+        external: g.external, ei_index: g.ei
+      }))
+    },
+    outcomes,
+    validation: validation.map(c=>({check:c.id, name:c.name, value:c.val, pass:c.pass})),
+    controls: {
+      networkFilters: ["all",...activeLayers],
+      highlightFilters: ["isolates","bridges","brokers","articulation_points",
+        "high_betweenness","adoption_champions","key_persons"],
+      layoutModes: ["force_layout","hierarchical_layout","group_layout"]
+    },
+    uiHints: {
+      nodeColor: "department", nodeSize: "betweenness",
+      edgeColor: "layer",
+      annotations: ["cluster_hulls","bridge_highlights","metric_callouts"]
+    }
+  };
+
+  dlFile(JSON.stringify(payload, null, 2),
+    `ONA_${scenarioId}_platform_payload.json`, "application/json");
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// VISUALISATION
+// ═══════════════════════════════════════════════════════════════════
+function renderNetwork() {
+  const {nodes, edges, metrics} = currentNetwork;
+  document.getElementById("empty").style.display = "none";
+
+  // Reset the neighbour-map hook so the previous render's closure (and its
+  // linkData / nodeData references) can be garbage-collected. (Fix 1 & 5)
+  _currentRebuildNeighbourMap = function() {};
+
+  const wrap  = document.getElementById("viz-wrap");
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  const svg = d3.select("#viz-svg");
+  svg.selectAll("*").remove();
+
+  const colorBy = document.getElementById("color-by").value;
+  const sizeBy  = document.getElementById("size-by").value;
+  const opacity = getCurrentOpacity();
+  const lblMode = document.getElementById("lbl-sel").value;
+
+  // ── color scale ──
+  const CONT = ["ai_adoption_score","change_readiness","attrition_risk","level","tenure_years","performance_score"];
+  const colorVals = nodes.map(n => n[colorBy] != null ? n[colorBy] : "?");
+  const uVals = [...new Set(colorVals.map(String))].sort();
+  const cMap  = new Map(uVals.map((v,i) => [v, DEPT_COLORS[i % DEPT_COLORS.length]]));
+  let getColor;
+  if (CONT.includes(colorBy)) {
+    const nums = nodes.map(n => +n[colorBy] || 0);
+    // Use viridis (sequential, perceptually uniform) not cool (diverging-ish)
+    const sc = d3.scaleSequential([nums.reduce((a,b)=>a<b?a:b,Infinity), nums.reduce((a,b)=>a>b?a:b,-Infinity)], d3.interpolateViridis);
+    getColor = nd => sc(+nd[colorBy] || 0);
+  } else {
+    getColor = nd => cMap.get(String(nd[colorBy])) || "#666";
+  }
+
+  // ── size scale ── log-scale betweenness prevents hub domination
+  const {degree, btwNorm, artPoints} = metrics;
+  const mxD = degree.reduce((a,b)=>a>b?a:b, 1), mxB = btwNorm.reduce((a,b)=>a>b?a:b, 1e-8);
+  const logB = btwNorm.map(b => Math.log1p(b * 1e4));
+  const mxLB = logB.reduce((a,b)=>a>b?a:b, 1e-8);
+  const getR = i => {
+    if (sizeBy==="degree")      return 3 + (degree[i]/mxD)*12;
+    if (sizeBy==="betweenness") return 3 + (logB[i]/mxLB)*13;  // log scale — spreads middle range
+    if (sizeBy==="level")       return 2 + nodes[i].level*1.8;
+    return 5;
+  };
+
+  // ── edge sampling (seeded, per-layer proportional) ──
+  const MAX_EDGES = 3000;
+  const idToIdx = Object.fromEntries(nodes.map((n,i) => [n.id, i]));
+  let dispEdges = edges;
+  if (edges.length > MAX_EDGES) {
+    const byL = {};
+    edges.forEach(e => { (byL[e.layer] = byL[e.layer]||[]).push(e); });
+    dispEdges = [];
+    // Use seeded shuffle (mulberry32 on seedTopo) so display is deterministic
+    const shuffleRng = mulberry32((currentNetwork?.seedTopo || 47) ^ 0xDEAD);
+    Object.entries(byL).forEach(([l, es]) => {
+      const shuffled = es.slice().sort(() => shuffleRng() - 0.5);
+      const keep = l === "reporting" ? shuffled.length : Math.round(shuffled.length * (MAX_EDGES / edges.length));
+      for (let i = 0; i < keep && i < shuffled.length; i++) dispEdges.push(shuffled[i]);
+    });
+  }
+
+  const linkData = dispEdges.map(e => ({
+    source: e.fromIdx ?? idToIdx[e.from],
+    target: e.toIdx  ?? idToIdx[e.to],
+    layer: e.layer, directed: e.directed,
+    weight: e.weight, same_dept: e.same_dept,
+    same_location: e.same_location, same_legacy: e.same_legacy
+  })).filter(e => e.source != null && e.target != null && e.source !== e.target);
+  _allLinkData = linkData;   // promote to module scope (full display set)
+
+  const nodeData = nodes.map((nd, i) => ({...nd, _i: i, r: getR(i)}));
+  _nodeData    = nodeData;   // promote to module scope
+
+  // ── zoom ──
+  const g = svg.append("g");
+  zoomObj = d3.zoom().scaleExtent([0.04, 12]).on("zoom", ev => g.attr("transform", ev.transform));
+  svg.call(zoomObj);
+  const initScale = Math.min(W, H) / (Math.sqrt(nodes.length) * 30);
+  svg.call(zoomObj.transform, d3.zoomIdentity.translate(W/2, H/2).scale(initScale));
+
+  // ── defs: arrowheads — only for directed layers ──
+  const defs = svg.append("defs");
+  DIRECTED_LAYERS.forEach(l => {
+    const col = LAYER_COLORS[l] || "#aaa";
+    defs.append("marker")
+      .attr("id", `arr-${l}`).attr("viewBox","0 -4 8 8")
+      .attr("refX",8).attr("refY",0).attr("markerWidth",4).attr("markerHeight",4).attr("orient","auto")
+      .append("path").attr("d","M0,-4L8,0L0,4").attr("fill",col).attr("opacity",0.9);
+  });
+
+  // ── edges: one <g> per layer ──
+  const layerOrder = ["reporting","communication","trust","advice","collaboration",
+                      "innovation","mentorship","decision_influence","tool_interaction","energy"];
+  const byLayer = {};
+  linkData.forEach(e => { (byLayer[e.layer] = byLayer[e.layer]||[]).push(e); });
+
+  const linkGroups = {};
+  [...layerOrder, ...Object.keys(byLayer).filter(l => !layerOrder.includes(l))]
+    .filter(l => byLayer[l])
+    .forEach(l => {
+      const col   = LAYER_COLORS[l] || "#888";
+      const grp   = g.append("g").attr("class",`lg lg-${l}`);
+      const lines = grp.selectAll("line").data(byLayer[l]).join("line")
+        .attr("class","link")
+        .attr("stroke", col)
+        .attr("stroke-width",   LAYER_WIDTH[l] || 1)
+        .attr("stroke-dasharray", LAYER_DASH[l] || null)
+        .attr("stroke-opacity", edgeOpacity(l, opacity))
+        .attr("marker-end", d => (DIRECTED_LAYERS.has(l) && d.directed) ? `url(#arr-${l})` : null)
+        .style("cursor","pointer");
+
+      const tipE = document.getElementById("tip-edge");
+      lines.on("mouseover", (ev, d) => {
+        const col2 = LAYER_COLORS[d.layer] || "#888";
+        const ctx  = [d.same_dept && "same dept", d.same_location && "same location",
+                      d.same_legacy===true && "same legacy", d.same_legacy===false && "cross-legacy"]
+                      .filter(Boolean).join(", ");
+        tipE.innerHTML = `
+          <div class="tip-name" style="color:${col2}">${d.layer}${d.directed ? " →" : " ↔"}</div>
+          <div class="tip-r"><span>Weight</span><span class="tip-v">${(d.weight||0).toFixed(3)}</span></div>
+          ${ctx ? `<div class="tip-r"><span>Context</span><span class="tip-v">${ctx}</span></div>` : ""}`;
+        tipE.classList.add("on");
+      }).on("mousemove", ev => {
+        tipE.style.left = (ev.clientX+14)+"px"; tipE.style.top = (ev.clientY-10)+"px";
+      }).on("mouseout", () => tipE.classList.remove("on"))
+        .on("click", (ev, d) => { ev.stopPropagation(); soloLayerToggle(d.layer); });
+
+      linkGroups[l] = lines;
+    });
+
+  // ── nodes ──
+  const nodeG = g.append("g").attr("class","nodes")
+    .selectAll("g").data(nodeData).join("g").attr("class","node")
+    .call(d3.drag()
+      .on("start",(ev,d)=>{ if(!ev.active) simulation.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
+      .on("drag", (ev,d)=>{ d.fx=ev.x; d.fy=ev.y; })
+      .on("end",  (ev,d)=>{ if(!ev.active) simulation.alphaTarget(0); d.fx=null; d.fy=null; })
+    );
+
+  nodeG.append("circle")
+    .attr("r", d => d.r)
+    .attr("fill", d => getColor(d))
+    .attr("stroke", d => artPoints.has(d._i) ? "#e11d48" : d.is_non_human ? "#0d9488" : "rgba(0,0,0,0.15)")
+    .attr("stroke-width", d => (artPoints.has(d._i)||d.is_non_human) ? 2 : 0.8);
+
+  const q95 = quantile(degree, 0.95);
+  if (lblMode==="all") {
+    nodeG.append("text").text(d=>d.label).attr("dx", d=>d.r+2).attr("dy","0.3em");
+  } else if (lblMode==="hubs") {
+    nodeG.filter(d=>degree[d._i]>=q95)
+         .append("text").text(d=>d.label).attr("dx",d=>d.r+2).attr("dy","0.3em");
+  }
+
+  const tipN = document.getElementById("tip-node");
+
+  // Pre-build neighbour index from linkData for O(1) lookup
+  // neighbourMap: nodeIndex -> Set of neighbour nodeIndices (across all visible layers)
+  // Stored at module level so it survives re-renders without monkey-patching.
+  function buildNeighbourMap(links) {
+    const map = new Map();
+    links.forEach(e => {
+      const si = typeof e.source === "object" ? e.source._i : e.source;
+      const ti = typeof e.target === "object" ? e.target._i : e.target;
+      if (si == null || ti == null) return;
+      if (!map.has(si)) map.set(si, new Set());
+      if (!map.has(ti)) map.set(ti, new Set());
+      map.get(si).add(ti);
+      map.get(ti).add(si);
+    });
+    return map;
+  }
+  let neighbourMap = buildNeighbourMap(linkData);
+
+  // Expose a rebuild function on the module-level handle so applyLayerVisibility
+  // (defined at module scope) can call it without any monkey-patching.
+  _currentRebuildNeighbourMap = function() {
+    const visibleLinks = linkData.filter(e => {
+      const layer = e.layer;
+      if (soloLayer !== null) return layer === soloLayer;
+      return layerVisible[layer] !== false;
+    });
+    neighbourMap = buildNeighbourMap(visibleLinks);
+  };
+
+  // Fix 7: Helper to escape user-supplied strings before inserting into innerHTML.
+  function esc(s) {
+    if (s == null) return "";
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  nodeG.on("mouseover", (ev, d) => {
+    // ── tooltip ──
+    tipN.innerHTML = `
+      <div class="tip-name">${esc(d.label)} · ${esc(d.department)}</div>
+      <div class="tip-r"><span>${esc(d.seniority_level)}</span><span class="tip-v">${esc(d.location)}</span></div>
+      <div class="tip-r"><span>Degree</span><span class="tip-v">${degree[d._i]}</span></div>
+      <div class="tip-r"><span>Betweenness</span><span class="tip-v">${(btwNorm[d._i]*100).toFixed(2)}%</span></div>
+      <div class="tip-r"><span>AI Adoption</span><span class="tip-v">${(d.ai_adoption_score*100).toFixed(0)}%</span></div>
+      <div class="tip-r"><span>Change Ready</span><span class="tip-v">${(d.change_readiness*100).toFixed(0)}%</span></div>
+      <div class="tip-r"><span>Attrition Risk</span><span class="tip-v">${(d.attrition_risk*100).toFixed(0)}%</span></div>
+      ${artPoints.has(d._i)?'<div class="tip-flag" style="color:#f87171">⚠ Articulation Point</div>':""}
+      ${d.is_non_human?'<div class="tip-flag" style="color:#2dd4bf">🤖 AI Agent</div>':""}
+      ${d.adoption_champion?'<div class="tip-flag" style="color:#fbbf24">★ Adoption Champion</div>':""}
+      ${d.key_person_candidate?'<div class="tip-flag" style="color:#f472b6">♦ Key Person</div>':""}`;
+    tipN.classList.add("on");
+
+    // ── neighbourhood highlight ──
+    const hIdx    = d._i;
+    const nbrs    = neighbourMap.get(hIdx) || new Set();
+
+    // Dim non-neighbour nodes; brighten neighbours; pop the hovered node
+    nodeG.select("circle")
+      .transition().duration(120)
+      .attr("opacity", nd => {
+        if (nd._i === hIdx) return 1;
+        if (nbrs.has(nd._i))  return 1;
+        return 0.2;            // faint but visible — was 0.08
+      })
+      .attr("r", nd => {
+        if (nd._i === hIdx) return nd.r * 1.35;   // hovered: bigger
+        if (nbrs.has(nd._i))  return nd.r * 1.10; // neighbours: slightly bigger
+        return nd.r;
+      })
+      .attr("stroke", nd => {
+        if (nd._i === hIdx) return "#1a1714";
+        if (nbrs.has(nd._i))  return "#4f46e5";
+        return "rgba(0,0,0,0.08)";
+      })
+      .attr("stroke-width", nd => {
+        if (nd._i === hIdx) return 2.5;
+        if (nbrs.has(nd._i))  return 1.5;
+        return 0.5;
+      });
+
+    // Dim non-incident edges; brighten incident edges
+    Object.entries(linkGroups).forEach(([layer, sel]) => {
+      const baseOp = edgeOpacity(layer, getCurrentOpacity());
+      const baseW  = LAYER_WIDTH[layer] || 1;
+      sel.transition().duration(120)
+        .attr("stroke-opacity", e => {
+          const si = typeof e.source === "object" ? e.source._i : e.source;
+          const ti = typeof e.target === "object" ? e.target._i : e.target;
+          const incident = si === hIdx || ti === hIdx;
+          if (baseOp === 0) return 0;
+          return incident ? Math.min(0.95, baseOp * 2.5) : 0.10;   // was 0.03
+        })
+        .attr("stroke-width", e => {
+          const si = typeof e.source === "object" ? e.source._i : e.source;
+          const ti = typeof e.target === "object" ? e.target._i : e.target;
+          return (si === hIdx || ti === hIdx) ? baseW * 2.2 : baseW;
+        });
+    });
+
+  }).on("mousemove", ev => {
+    tipN.style.left = (ev.clientX+14)+"px";
+    tipN.style.top  = (ev.clientY-10)+"px";
+
+  }).on("mouseout", () => {
+    tipN.classList.remove("on");
+
+    // ── restore all nodes ──
+    nodeG.select("circle")
+      .transition().duration(200)
+      .attr("opacity", 1)
+      .attr("r", nd => nd.r)
+      .attr("stroke", nd =>
+        artPoints.has(nd._i) ? "#e11d48" : nd.is_non_human ? "#0d9488" : "rgba(0,0,0,0.15)")
+      .attr("stroke-width", nd => (artPoints.has(nd._i) || nd.is_non_human) ? 2 : 0.8);
+
+    // ── restore all edges ──
+    Object.entries(linkGroups).forEach(([layer, sel]) => {
+      const baseOp = edgeOpacity(layer, getCurrentOpacity());
+      const baseW  = LAYER_WIDTH[layer] || 1;
+      sel.transition().duration(200)
+        .attr("stroke-opacity", baseOp)
+        .attr("stroke-width", baseW);
+    });
+  });
+
+  // click canvas to clear solo
+  svg.on("click",()=>{
+    soloLayer = null;
+    applyLayerVisibility(getLinkGroupsFromDOM(), getCurrentOpacity());
+    refreshLayerPanel();
+  });
+
+  // ── simulation ──
+  simulation = d3.forceSimulation(nodeData)
+    .force("link", d3.forceLink(linkData).id(d=>d._i).distance(d=>d.same_dept?42:88).strength(0.35))
+    .force("charge", d3.forceManyBody().strength(-72).distanceMax(190))
+    .force("center", d3.forceCenter(0,0))
+    .force("collide", d3.forceCollide(d=>d.r+1.5))
+    .alphaDecay(0.024)
+    .on("tick",()=>{
+      Object.values(linkGroups).forEach(sel =>
+        sel.attr("x1",d=>d.source.x).attr("y1",d=>d.source.y)
+           .attr("x2",d=>{
+             if(!d.directed) return d.target.x;
+             const dx=d.target.x-d.source.x, dy=d.target.y-d.source.y;
+             const dist=Math.sqrt(dx*dx+dy*dy)||1;
+             const r=(d.target.r||6)+7; // node radius + arrow length clearance
+             return d.target.x - dx/dist*r;
+           })
+           .attr("y2",d=>{
+             if(!d.directed) return d.target.y;
+             const dx=d.target.x-d.source.x, dy=d.target.y-d.source.y;
+             const dist=Math.sqrt(dx*dx+dy*dy)||1;
+             const r=(d.target.r||6)+7;
+             return d.target.y - dy/dist*r;
+           }));
+      nodeG.attr("transform",d=>`translate(${d.x},${d.y})`);
+    });
+
+  // init layer visibility = all visible
+  Object.keys(byLayer).forEach(l => { layerVisible[l] = true; });
+  soloLayer = null;
+
+  buildLegend(uVals, cMap, CONT.includes(colorBy));
+  refreshLayerPanel();
+}
+
+// ── layer opacity helper ──
+function edgeOpacity(layer, opacity) {
+  if (soloLayer !== null) return soloLayer === layer ? Math.min(0.95, opacity * 1.6) : 0.04;
+  return layerVisible[layer] === false ? 0 : opacity;
+}
+
+function applyLayerVisibility(linkGroups, opacity) {
+  Object.entries(linkGroups).forEach(([l, sel]) =>
+    sel.attr("stroke-opacity", edgeOpacity(l, opacity)));
+  _currentRebuildNeighbourMap();  // rebuild neighbour map for hover highlights (Fix 1 & 5)
+  restartSimulationForVisibility();
+}
+
+// Rebuild the link force using only currently-visible layers and reheat the sim
+function restartSimulationForVisibility() {
+  if (!simulation || !_allLinkData || !_nodeData) return;
+
+  // Determine which layers are active (visible or soloed)
+  const activeLayers = _allLinkData.reduce((s, d) => { s.add(d.layer); return s; }, new Set());
+  const visibleSet = new Set([...activeLayers].filter(l => {
+    if (soloLayer !== null) return soloLayer === l;
+    return layerVisible[l] !== false;
+  }));
+
+  // Filter linkData to visible layers only.
+  // d3 mutates link objects (adding .source/.target as node refs) so filter from the stored array.
+  const activeLinks = _allLinkData.filter(d => visibleSet.has(d.layer));
+
+  simulation
+    .force("link", d3.forceLink(activeLinks)
+      .id(d => d._i)
+      .distance(d => d.same_dept ? 42 : 88)
+      .strength(0.35))
+    .alpha(0.4)
+    .restart();
+}
+
+// FIX 4 & 5 & 8 & 9 & 10: soloLayerToggle and refreshLayerPanel no longer pass stale
+// opacity or linkGroups — they always read fresh values from DOM/slider.
+function soloLayerToggle(layer) {
+  soloLayer = soloLayer === layer ? null : layer;
+  applyLayerVisibility(getLinkGroupsFromDOM(), getCurrentOpacity());
+  refreshLayerPanel();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// LAYER FILTER PANEL — no longer takes linkGroups or opacity params;
+// always reads them fresh from DOM/slider to avoid stale closure bugs.
+// ─────────────────────────────────────────────────────────────────
+function refreshLayerPanel() {
+  if (!currentNetwork) return;
+  const edges   = currentNetwork.edges;
+  const opacity = getCurrentOpacity();
+
+  const cnt = {};
+  edges.forEach(e => { cnt[e.layer] = (cnt[e.layer]||0)+1; });
+  const total = edges.length;   // total raw edges (all layers)
+
+  // visible total: what's actually shown (respects solo + eye toggles)
+  const visibleTotal = edges.filter(e => {
+    if (soloLayer !== null) return e.layer === soloLayer;
+    return layerVisible[e.layer] !== false;
+  }).length;
+
+  const layers = Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]);
+
+  const container = document.getElementById("lf-rows");
+  container.innerHTML = "";
+
+  layers.forEach(l => {
+    const col      = LAYER_COLORS[l] || "#888";
+    const isDir    = DIRECTED_LAYERS.has(l);
+    const n        = cnt[l];
+    const dash     = LAYER_DASH[l] || "";
+    const isSolo   = soloLayer === l;
+    const isHidden = layerVisible[l] === false;
+    // % of visible total so values sum to 100% as layers are toggled
+    const pctDisplay = isHidden
+      ? "—"
+      : (visibleTotal > 0 ? ((n/visibleTotal)*100).toFixed(0)+"%" : "0%");
+
+    const row = document.createElement("div");
+    row.className = `lf-row${isSolo?" active":""}${isHidden?" hidden-layer":""}`;
+    row.dataset.layer = l;
+
+    const arrowSeg = isDir
+      ? `<defs><marker id="ms-${l}" viewBox="0 -3 6 6" refX="8" refY="0" markerWidth="4" markerHeight="4" orient="auto"><path d="M0,-3L6,0L0,3" fill="${col}"/></marker></defs>` : "";
+    const swatch = `<svg width="28" height="10" overflow="visible">
+      ${arrowSeg}
+      <line x1="1" y1="5" x2="27" y2="5"
+        stroke="${col}" stroke-width="2"
+        stroke-dasharray="${dash}"
+        ${isDir?`marker-end="url(#ms-${l})"`:""}/></svg>`;
+
+    row.innerHTML = `
+      <div class="lf-swatch">${swatch}</div>
+      <div class="lf-name">${l}</div>
+      <span class="lf-badge ${isDir?"dir":"undir"}">${isDir?"→":"↔"}</span>
+      <div class="lf-count">${n.toLocaleString()} <span class="lf-pct">${pctDisplay}</span></div>
+      <button class="lf-eye ${isHidden?"eye-off":"eye-on"}" title="${isHidden?"Show":"Hide"} layer" data-eye="${l}" aria-label="${isHidden?"Show":"Hide"} ${l} layer">
+        ${isHidden ? "🚫" : "👁"}
+      </button>`;
+
+    // Row click = solo toggle; ignore if the eye button was clicked
+    row.addEventListener("click", ev => {
+      if (ev.target.closest(".lf-eye")) return;   // eye has its own handler
+      soloLayerToggle(l);
+    });
+
+    // Eye button click = toggle visibility (show/hide independent of solo)
+    row.querySelector(".lf-eye").addEventListener("click", ev => {
+      ev.stopPropagation();
+      // If a solo is active, clear it first then apply the hide
+      if (soloLayer !== null) {
+        soloLayer = null;
+      }
+      layerVisible[l] = (layerVisible[l] === false) ? true : false;
+      applyLayerVisibility(getLinkGroupsFromDOM(), getCurrentOpacity());
+      refreshLayerPanel();
+    });
+
+    container.appendChild(row);
+  });
+
+  // hint text
+  document.getElementById("lf-hint").innerHTML = soloLayer
+    ? `Soloing <strong style="color:${LAYER_COLORS[soloLayer]||"#1a1714"}">${soloLayer}</strong> — click row or canvas to clear`
+    : "Click row to solo · Eye to hide/show";
+
+  // Keep mbar edge count and degree sparkline in sync
+  updateVisibleEdgeSummary();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// LEGEND
+// ─────────────────────────────────────────────────────────────────
+function buildLegend(uVals, cMap, isCont) {
+  const body = document.getElementById("leg-body");
+  let html = `<div class="ov-title" style="margin-bottom:6px">Node Color</div>`;
+  if (!isCont) {
+    uVals.slice(0,14).forEach(v => {
+      html += `<div class="leg-row"><div class="leg-swatch" style="background:${cMap.get(v)||"#666"}"></div>${v}</div>`;
+    });
+    if (uVals.length>14) html += `<div class="leg-row" style="color:var(--text-3)">+${uVals.length-14} more</div>`;
+  } else {
+    html += `<div class="leg-row" style="color:var(--text-2);font-size:10px">Gradient scale (low → high)</div>`;
+  }
+  html += `<div class="ov-title" style="margin:12px 0 6px">Edge Layers</div>`;
+  const active = [...document.querySelectorAll(".chip.on")].map(c=>c.dataset.l);
+  active.forEach(l => {
+    const col = LAYER_COLORS[l]||"#666";
+    const isDir = DIRECTED_LAYERS.has(l);
+    const dash = LAYER_DASH[l]||"";
+    html += `<div class="leg-row">
+      <svg width="20" height="10" overflow="visible" style="flex-shrink:0">
+        <line x1="1" y1="5" x2="19" y2="5" stroke="${col}" stroke-width="2" stroke-dasharray="${dash}"/>
+      </svg>
+      ${l}
+      <span style="color:${isDir?"var(--amber)":"var(--violet)"};font-size:9px;margin-left:4px">${isDir?"→":"↔"}</span>
+    </div>`;
+  });
+  html += `<div class="ov-title" style="margin:12px 0 6px">Special Nodes</div>
+    <div class="leg-row"><div class="leg-special-icon" style="background:#f87171;outline:2px solid #f87171;outline-offset:1px"></div>Articulation Point</div>
+    <div class="leg-row"><div class="leg-special-icon" style="background:#2dd4bf;outline:2px solid #2dd4bf;outline-offset:1px"></div>AI Agent</div>`;
+  body.innerHTML = html;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// VALIDATION
+// ─────────────────────────────────────────────────────────────────
+function renderValidation(checks) {
+  const body = document.getElementById("val-body");
+  const pass = checks.filter(c=>c.pass).length;
+  let html = `<div style="color:var(--text-2);font-size:10px;margin-bottom:8px">${pass}/${checks.length} checks pass</div>`;
+  checks.forEach(c => {
+    html += `<div class="val-row ${c.pass?"val-pass":"val-fail"}">
+      ${c.pass?"✓":"✗"} ${c.name}
+      <span class="val-v">${c.val}</span>
+    </div>`;
+  });
+  body.innerHTML = html;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// EXPORTS
+// ─────────────────────────────────────────────────────────────────
+function exportGraphML() {
+  const {nodes, edges, scenarioId, topology, metrics} = currentNetwork;
+  const idToIdx = Object.fromEntries(nodes.map((nd,i)=>[nd.id,i]));
+  const nAttrs = ["department","seniority_level","level","role_bucket","location","tenure_years",
+    "performance_score","is_newcomer","hire_cohort","gender","ai_adoption_score","change_readiness",
+    "attrition_risk","is_non_human"];
+  const aType = {level:"int",tenure_years:"double",performance_score:"double",is_newcomer:"boolean",
+    hire_cohort:"int",ai_adoption_score:"double",change_readiness:"double",attrition_risk:"double",is_non_human:"boolean"};
+  let x = `<?xml version="1.0" encoding="UTF-8"?>\n<graphml xmlns="http://graphml.graphdrawing.org/graphml">\n`;
+  // Fix 12: XML comments cannot contain '--'; replace with em-dash to keep XML valid.
+  const safeScenarioId = String(scenarioId).replace(/--/g, "\u2014");
+  const safeTopology   = String(topology).replace(/--/g, "\u2014");
+  x += `  <!-- ONA Benchmark v3 · Scenario: ${safeScenarioId} · Topology: ${safeTopology} -->\n\n`;
+  nAttrs.forEach(a => { x += `  <key id="${a}" for="node" attr.name="${a}" attr.type="${aType[a]||"string"}"/>\n`; });
+  x += `  <key id="degree" for="node" attr.name="degree" attr.type="int"/>\n`;
+  x += `  <key id="betweenness" for="node" attr.name="betweenness" attr.type="double"/>\n`;
+  x += `  <key id="is_articulation" for="node" attr.name="is_articulation" attr.type="boolean"/>\n`;
+  x += `  <key id="weight" for="edge" attr.name="weight" attr.type="double"/>\n`;
+  x += `  <key id="layer" for="edge" attr.name="layer" attr.type="string"/>\n`;
+  x += `  <key id="directed_edge" for="edge" attr.name="directed_edge" attr.type="boolean"/>\n`;
+  x += `  <key id="same_dept" for="edge" attr.name="same_dept" attr.type="boolean"/>\n`;
+  x += `  <key id="same_location" for="edge" attr.name="same_location" attr.type="boolean"/>\n\n`;
+  x += `  <graph id="G" edgedefault="undirected">\n\n`;
+  nodes.forEach((nd,i)=>{
+    x += `    <node id="${nd.id}">\n`;
+    nAttrs.forEach(a => { if(nd[a]!=null) x+=`      <data key="${a}">${nd[a]}</data>\n`; });
+    x += `      <data key="degree">${metrics.degree[i]}</data>\n`;
+    x += `      <data key="betweenness">${metrics.btwNorm[i].toFixed(6)}</data>\n`;
+    x += `      <data key="is_articulation">${metrics.artPoints.has(i)}</data>\n`;
+    x += `    </node>\n`;
+  });
+  x += "\n";
+  edges.forEach((e,i)=>{
+    const fi = e.fromIdx??idToIdx[e.from], ti = e.toIdx??idToIdx[e.to];
+    if(fi==null||ti==null) return;
+    x += `    <edge id="e${i}" source="${nodes[fi].id}" target="${nodes[ti].id}">\n`;
+    x += `      <data key="weight">${e.weight}</data>\n`;
+    x += `      <data key="layer">${e.layer}</data>\n`;
+    x += `      <data key="directed_edge">${e.directed}</data>\n`;
+    x += `      <data key="same_dept">${e.same_dept}</data>\n`;
+    x += `      <data key="same_location">${e.same_location}</data>\n`;
+    x += `    </edge>\n`;
+  });
+  x += `  </graph>\n</graphml>`;
+  dlFile(x, `ONA_${scenarioId}_${topology}.graphml`, "text/xml");
+}
+
+function exportNodesCSV() {
+  const {nodes, metrics} = currentNetwork;
+  const cols = [...Object.keys(nodes[0]), "degree","betweenness","is_articulation"];
+  let csv = cols.join(",") + "\n";
+  nodes.forEach((n,i) => {
+    const row = {...n, degree:metrics.degree[i], betweenness:metrics.btwNorm[i].toFixed(6), is_articulation:metrics.artPoints.has(i)};
+    csv += cols.map(c => JSON.stringify(row[c]!=null?row[c]:"")).join(",") + "\n";
+  });
+  dlFile(csv, `ONA_${currentNetwork.scenarioId}_nodes.csv`, "text/csv");
+}
+
+function exportEdgesCSV() {
+  const {edges, nodes} = currentNetwork;
+  const idToIdx = Object.fromEntries(nodes.map((nd,i)=>[nd.id,i]));
+  const cols = ["from","to","weight","layer","directed","same_dept","same_location","same_legacy"];
+  let csv = cols.join(",") + "\n";
+  edges.forEach(e => {
+    csv += [e.from||"",e.to||"",e.weight,e.layer,e.directed,e.same_dept,e.same_location,e.same_legacy??""]
+      .map(v=>JSON.stringify(v)).join(",") + "\n";
+  });
+  dlFile(csv, `ONA_${currentNetwork.scenarioId}_edges.csv`, "text/csv");
+}
+
+function exportMetricsJSON() {
+  const {metrics, nodes, edges, scenarioId, topology} = currentNetwork;
+  const {n, edgeCount, density, avgDeg, maxDeg, clustering, compCount, giantFrac, artPoints, groupMetrics} = metrics;
+  const validation = validateScenario(scenarioId, nodes, edges, metrics);
+  dlFile(JSON.stringify({
+    generated_at: new Date().toISOString(), scenario_id: scenarioId, topology,
+    network_metrics: { node_count:n, edge_count:edgeCount, density:Math.round(density*10000)/10000,
+      avg_degree:Math.round(avgDeg*100)/100, max_degree:maxDeg,
+      clustering:Math.round(clustering*10000)/10000, component_count:compCount,
+      giant_component_share:Math.round(giantFrac*1000)/1000, articulation_point_count:artPoints.size },
+    group_metrics: groupMetrics.map(g=>({department:g.dept,internal:g.internal,external:g.external,ei_index:g.ei})),
+    validation: validation.map(c=>({check:c.id,name:c.name,value:c.val,pass:c.pass}))
+  }, null, 2), `ONA_${scenarioId}_metrics.json`, "application/json");
+}
+
+function dlFile(content, filename, mime) {
+  const blob = new Blob([content], {type:mime});
+  const url  = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement("a"), {href: url, download: filename});
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Revoke after a tick so the browser has time to start the download (Fix 4)
+  setTimeout(() => URL.revokeObjectURL(url), 100);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// UI HELPERS
+// ─────────────────────────────────────────────────────────────────
+function updateMbar(m, layers) {
+  document.getElementById("m-n").textContent  = m.n.toLocaleString();
+  // Show raw (per-layer) edge total; graph-unique projection count in tooltip
+  const eEl = document.getElementById("m-e");
+  const rawTotal = m.rawEdgeCount ?? m.edgeCount;
+  eEl.textContent = rawTotal.toLocaleString();
+  eEl.title = `${m.edgeCount.toLocaleString()} unique node-pairs in undirected projection`;
+  document.getElementById("m-d").textContent  = (m.density*100).toFixed(2)+"%";
+  document.getElementById("m-ad").textContent = m.avgDeg.toFixed(1);
+  document.getElementById("m-cl").textContent = (m.clustering*100).toFixed(1)+"%";
+  document.getElementById("m-co").textContent = m.compCount;
+  document.getElementById("m-gc").textContent = (m.giantFrac*100).toFixed(0)+"%";
+  document.getElementById("m-ap").textContent = m.artPoints.size;
+  document.getElementById("m-la").textContent = layers.length;
+  drawDegreeSparkline(m.degree);
+}
+
+// Keeps edge count and degree sparkline in sync with layer visibility/solo.
+// Called from refreshLayerPanel so both update together.
+function updateVisibleEdgeSummary() {
+  if (!currentNetwork) return;
+  const {edges, metrics, nodes} = currentNetwork;
+
+  const visibleEdges = edges.filter(e => {
+    if (soloLayer !== null) return e.layer === soloLayer;
+    return layerVisible[e.layer] !== false;
+  });
+
+  const eEl = document.getElementById("m-e");
+  const total = metrics.rawEdgeCount ?? edges.length;
+  if (visibleEdges.length === total) {
+    eEl.textContent = total.toLocaleString();
+    eEl.title = `${metrics.edgeCount.toLocaleString()} unique node-pairs in undirected projection`;
+  } else {
+    eEl.textContent = `${visibleEdges.length.toLocaleString()} / ${total.toLocaleString()}`;
+    eEl.title = `${visibleEdges.length.toLocaleString()} visible of ${total.toLocaleString()} total`;
+  }
+
+  // Recompute per-node degree from visible edges only
+  const n = nodes.length;
+  // Fix 14: Use cached idToIdx rather than rebuilding on every layer toggle
+  const idToIdx = currentNetwork.idToIdx || Object.fromEntries(nodes.map((nd,i) => [nd.id, i]));
+  const visDeg = new Int32Array(n);
+  visibleEdges.forEach(e => {
+    const fi = e.fromIdx ?? idToIdx[e.from];
+    const ti = e.toIdx  ?? idToIdx[e.to];
+    if (fi == null || ti == null || fi === ti) return;
+    visDeg[fi]++; visDeg[ti]++;
+  });
+  drawDegreeSparkline(Array.from(visDeg));
+}
+
+function drawDegreeSparkline(degree) {
+  const svg = document.getElementById("deg-sparkline");
+  if (!svg) return;
+  const W = 90, H = 18, nBins = 18;
+  const mx = degree.reduce((a,b)=>a>b?a:b, 1);
+  // log-bin counts
+  const bins = new Array(nBins).fill(0);
+  degree.forEach(d => {
+    const bin = d === 0 ? 0 : Math.min(nBins-1, Math.floor(Math.log1p(d)/Math.log1p(mx)*(nBins-1)));
+    bins[bin]++;
+  });
+  const mxBin = bins.reduce((a,b)=>a>b?a:b, 1);
+  const bW = W/nBins;
+  svg.innerHTML = bins.map((cnt, i) => {
+    const barH = Math.max(1, Math.round((cnt/mxBin)*(H-1)));
+    return `<rect x="${i*bW+0.5}" y="${H-barH}" width="${bW-0.5}" height="${barH}"
+      fill="#4f46e5" opacity="0.6"/>`;
+  }).join("");
+}
+
+function renderOutcomes() {
+  if (!currentNetwork?.outcomes) return;
+  const {outcomes, nodes, scenarioId} = currentNetwork;
+  const body = document.getElementById("outcomes-body");
+
+  // aggregate averages per department
+  const byDept = {};
+  outcomes.forEach((o, i) => {
+    const dept = nodes[i]?.department || "?";
+    if (!byDept[dept]) byDept[dept] = {eng:[], inn:[], burn:[], vel:[]};
+    byDept[dept].eng.push(o.engagement_score);
+    byDept[dept].inn.push(o.innovation_score);
+    byDept[dept].burn.push(o.burnout_risk);
+    if (o.adoption_velocity != null) byDept[dept].vel.push(o.adoption_velocity);
+  });
+
+  const avg = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length) : null;
+  const bar = (val, color) => {
+    const pct = Math.round((val||0)*100);
+    return `<div style="display:flex;align-items:center;gap:5px">
+      <div style="flex:1;height:4px;background:var(--surf3);border-radius:2px">
+        <div style="width:${pct}%;height:100%;background:${color};border-radius:2px"></div></div>
+      <span style="color:var(--text);font-size:9px;min-width:26px;text-align:right">${pct}%</span></div>`;
+  };
+
+  const hasVel = scenarioId === "AI_M";
+  let html = `<div style="font-size:9px;color:var(--text-3);margin-bottom:8px">
+    Dept averages · <span style="color:var(--cyan)">${outcomes.length}</span> nodes computed</div>`;
+
+  // overall summary row
+  const allEng  = avg(outcomes.map(o=>o.engagement_score));
+  const allInn  = avg(outcomes.map(o=>o.innovation_score));
+  const allBurn = avg(outcomes.map(o=>o.burnout_risk));
+  html += `<div style="margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+    <div style="color:var(--text-2);font-size:10px;font-weight:600;margin-bottom:5px">Overall</div>
+    <div style="color:var(--text-3);font-size:9px;margin-bottom:2px">Engagement</div>${bar(allEng,"#34d399")}
+    <div style="color:var(--text-3);font-size:9px;margin:4px 0 2px">Innovation</div>${bar(allInn,"#a78bfa")}
+    <div style="color:var(--text-3);font-size:9px;margin:4px 0 2px">Burnout Risk</div>${bar(allBurn,"#f87171")}
+  </div>`;
+
+  // per-dept rows
+  const depts = Object.keys(byDept).sort();
+  depts.forEach(dept => {
+    const d = byDept[dept];
+    const e = avg(d.eng), inn = avg(d.inn), b = avg(d.burn), v = avg(d.vel);
+    html += `<div style="margin-bottom:8px">
+      <div style="color:var(--text-2);font-size:9px;font-weight:600;margin-bottom:3px">${dept}</div>
+      <div style="color:var(--text-3);font-size:8px;margin-bottom:1px">Engagement</div>${bar(e,"#34d399")}
+      <div style="color:var(--text-3);font-size:8px;margin:2px 0 1px">Innovation</div>${bar(inn,"#a78bfa")}
+      <div style="color:var(--text-3);font-size:8px;margin:2px 0 1px">Burnout</div>${bar(b,"#f87171")}
+      ${hasVel && v!=null ? `<div style="color:var(--text-3);font-size:8px;margin:2px 0 1px">AI Adoption Vel.</div>${bar(v,"#fbbf24")}` : ""}
+    </div>`;
+  });
+
+  body.innerHTML = html;
+}
+
+function enableExports() {
+  ["btn-gml","btn-ncsv","btn-ecsv","btn-json","btn-payload"].forEach(id => {
+    document.getElementById(id).disabled = false;
+  });
+}
+
+function setStatus(type, msg) {
+  const bar = document.getElementById("status-bar");
+  bar.className = "status " + (type==="running"?"run":type==="done"?"done":type==="error"?"err":"");
+  bar.querySelector(".dot").className = "dot"+(type==="running"?" pulse":"");
+  document.getElementById("status-txt").textContent = msg;
+}
+function showProg(lbl, sub) {
+  document.getElementById("prog-label").textContent = lbl;
+  document.getElementById("prog-sub").textContent   = sub;
+  document.getElementById("progress").classList.add("show");
+  setStatus("running", lbl);
+}
+function hideProg() { document.getElementById("progress").classList.remove("show"); }
+
+function refreshScenarioInfo() {
+  const id = document.getElementById("sc-sel").value;
+  const sc = SCENARIO_REGISTRY[id];
+  document.getElementById("sc-desc").textContent = sc.desc;
+  document.getElementById("sc-tags").innerHTML   = sc.tags.map(t=>`<span class="tag">${t}</span>`).join("");
+  const sl = document.getElementById("n-slider");
+  sl.min = sc.minN; sl.max = sc.maxN;
+  if (+sl.value > sc.maxN || +sl.value < sc.minN) sl.value = sc.defaultN;
+  document.getElementById("n-val").textContent   = sl.value;
+  document.getElementById("seed-topo").value     = sc.seed_topo;
+  document.getElementById("seed-attr").value     = 1047;
+  document.querySelectorAll(".chip").forEach(c => {
+    c.classList.toggle("on", sc.layers.includes(c.dataset.l));
+  });
+}
+
+function buildGenChips() {
+  const c = document.getElementById("gen-chips");
+  ALL_LAYERS.forEach(l => {
+    const el = document.createElement("span");
+    el.className = "chip"; el.dataset.l = l;
+    el.textContent = l.replace(/_/g," ");
+    el.addEventListener("click", () => el.classList.toggle("on"));
+    c.appendChild(el);
+  });
+}
+
+function toggleOverlay(id) {
+  document.getElementById(id).classList.toggle("show");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// GENERATE PIPELINE
+// ─────────────────────────────────────────────────────────────────
+function generateNetwork() {
+  const scenarioId  = document.getElementById("sc-sel").value;
+  const scenario    = SCENARIO_REGISTRY[scenarioId];
+  const nCount      = parseInt(document.getElementById("n-slider").value, 10);
+  const seedTopo    = parseInt(document.getElementById("seed-topo").value, 10) || scenario.seed_topo;
+  const seedAttr    = parseInt(document.getElementById("seed-attr").value, 10) || 1047;
+  const tmpl        = document.getElementById("tmpl-sel").value;
+  const topoOvr     = document.getElementById("topo-sel").value;
+  const templateId  = tmpl    === "auto" ? scenario.template : tmpl;
+  const topology    = topoOvr === "auto" ? scenario.topology : topoOvr;
+  const activeLayers = [...document.querySelectorAll(".chip.on")].map(c => c.dataset.l);
+
+  if (activeLayers.length === 0) {
+    setStatus("error", "Select at least one layer before generating.");
+    return;
+  }
+
+  if (simulation) { simulation.stop(); simulation = null; }
+  layerVisible = {}; soloLayer = null;
+  frozen = false;
+  const fbtn = document.getElementById("btn-freeze");
+  if (fbtn) fbtn.textContent = "❄ Freeze";
+
+  showProg("Generating nodes…", `${nCount} nodes · ${templateId}`);
+  // Fix 11: Each stage has its own try/catch so an error in any inner
+  // setTimeout callback is caught and shown rather than leaving the overlay frozen.
+  function pipelineError(err) {
+    hideProg();
+    setStatus("error", "Error: " + err.message);
+    console.error(err);
+  }
+
+  setTimeout(() => {
+    let nodes;
+    try {
+      nodes = generateNodes(nCount, templateId, scenarioId, seedAttr);
+    } catch(err) { return pipelineError(err); }
+
+    showProg("Building topology…", topology.toUpperCase());
+    setTimeout(() => {
+      let base;
+      try {
+        if      (topology==="er")   base = generateER(nodes, nodes.length<=100?0.07:0.04, mulberry32(seedTopo));
+        else if (topology==="ws")   base = generateWS(nodes, nodes.length<=100?4:6, 0.12, mulberry32(seedTopo));
+        else if (topology==="ba")   base = generateBA(nodes, 5, mulberry32(seedTopo));
+        else if (topology==="sbm")  base = generateSBM(nodes, scenarioId, seedTopo);
+        else                        base = generateHierCorp(nodes, seedTopo, scenarioId);
+      } catch(err) { return pipelineError(err); }
+
+      showProg("Deriving layers…", activeLayers.join(", "));
+      setTimeout(() => {
+        let edges;
+        try {
+          edges = generateLayers(base, nodes, scenarioId, activeLayers, seedAttr);
+        } catch(err) { return pipelineError(err); }
+
+        showProg("Computing metrics…","");
+        setTimeout(() => {
+          try {
+            const metrics    = computeMetrics(nodes, edges);
+            const validation = validateScenario(scenarioId, nodes, edges, metrics);
+            const outcomes   = computeOutcomes(nodes, edges, metrics, scenarioId, seedAttr);
+            currentNetwork   = {nodes, edges, metrics, validation, outcomes, scenarioId, topology, templateId, activeLayers, seedTopo,
+                                 // Fix 14: cache idToIdx once so updateVisibleEdgeSummary and
+                                 // export functions don't rebuild it on every layer toggle.
+                                 idToIdx: Object.fromEntries(nodes.map((nd,i) => [nd.id, i]))};
+            pingHome(currentNetwork); // fire-and-forget, silent
+            hideProg();
+            updateMbar(metrics, activeLayers);
+            enableExports();
+            renderValidation(validation);
+            renderOutcomes();
+            renderNetwork();
+            setStatus("done", `${nodes.length} nodes · ${edges.length} edges · ${activeLayers.length} layers`);
+          } catch(err) { return pipelineError(err); }
+        },10);
+      },10);
+    },10);
+  },10);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GRAPHML IMPORT
+// ═══════════════════════════════════════════════════════════════════
+
+function parseGraphML(xmlText, filename) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlText, "application/xml");
+  const parseErr = doc.querySelector("parsererror");
+  if (parseErr) throw new Error("XML parse error: " + parseErr.textContent.slice(0, 120));
+
+  const graphEl = doc.querySelector("graph");
+  if (!graphEl) throw new Error("No <graph> element found in file.");
+
+  const directed = (graphEl.getAttribute("edgedefault") || "undirected") === "directed";
+
+  // Build key → attr-name map
+  const keyMap = {};      // id → { name, type, for }
+  doc.querySelectorAll("key").forEach(k => {
+    keyMap[k.getAttribute("id")] = {
+      name: k.getAttribute("attr.name") || k.getAttribute("id"),
+      type: k.getAttribute("attr.type") || "string",
+      for:  k.getAttribute("for") || "all"
+    };
+  });
+
+  function getDataMap(el) {
+    const out = {};
+    el.querySelectorAll(":scope > data").forEach(d => {
+      const keyId = d.getAttribute("key");
+      const meta  = keyMap[keyId];
+      const name  = meta ? meta.name : keyId;
+      const raw   = d.textContent.trim();
+      const type  = meta ? meta.type : "string";
+      out[name] = type === "int"     ? parseInt(raw, 10)
+                : type === "double" || type === "float" ? parseFloat(raw)
+                : type === "boolean" ? (raw === "true" || raw === "1")
+                : raw;
+    });
+    return out;
+  }
+
+  // ── Nodes ──
+  const rawNodes = [];
+  doc.querySelectorAll("graph > node").forEach(n => {
+    const id   = n.getAttribute("id");
+    const data = getDataMap(n);
+    rawNodes.push({ _gmlId: id, ...data });
+  });
+
+  if (rawNodes.length === 0) throw new Error("No nodes found in GraphML.");
+
+  // Normalise nodes to the internal schema (best-effort mapping)
+  const nodes = rawNodes.map((rn, i) => {
+    const nd = {
+      id:               rn.id          || rn._gmlId,
+      label:            rn.label       || rn._gmlId,
+      department:       rn.department  || rn.dept || rn.group || rn.community || "Unknown",
+      seniority_level:  rn.seniority_level || rn.seniority || rn.rank || "Staff",
+      level:            +(rn.level     || rn.seniority_num || 2),
+      role_bucket:      rn.role_bucket || "individual",
+      location:         rn.location    || rn.site || "Unknown",
+      tenure_years:     +(rn.tenure_years || rn.tenure || 2),
+      performance_score:+(rn.performance_score || rn.performance || 3),
+      is_newcomer:      !!(rn.is_newcomer || false),
+      hire_cohort:      +(rn.hire_cohort || 2022),
+      gender:           rn.gender      || "unknown",
+      ai_adoption_score:+(rn.ai_adoption_score  || 0.5),
+      change_readiness: +(rn.change_readiness   || 0.5),
+      attrition_risk:   +(rn.attrition_risk     || 0.3),
+      is_non_human:     !!(rn.is_non_human || false),
+      _gmlId:           rn._gmlId
+    };
+    // carry through any extra attributes from the file
+    Object.keys(rn).forEach(k => { if (!(k in nd)) nd[k] = rn[k]; });
+    return nd;
+  });
+
+  // Build gmlId → index map for edge resolution
+  const gmlIdToIdx = Object.fromEntries(nodes.map((nd, i) => [nd._gmlId, i]));
+
+  // ── Edges ──
+  const edges = [];
+  doc.querySelectorAll("graph > edge").forEach(e => {
+    const srcId  = e.getAttribute("source");
+    const tgtId  = e.getAttribute("target");
+    const isDir  = e.getAttribute("directed") === "true" || directed;
+    const data   = getDataMap(e);
+    const fromIdx = gmlIdToIdx[srcId];
+    const toIdx   = gmlIdToIdx[tgtId];
+    if (fromIdx == null || toIdx == null || fromIdx === toIdx) return;
+
+    edges.push({
+      from:     nodes[fromIdx].id,
+      to:       nodes[toIdx].id,
+      fromIdx,
+      toIdx,
+      weight:   +(data.weight ?? 1),
+      layer:    data.layer     || data.relationship || data.type || "communication",
+      directed: !!(data.directed_edge ?? isDir),
+      same_dept:     nodes[fromIdx].department === nodes[toIdx].department,
+      same_location: nodes[fromIdx].location   === nodes[toIdx].location,
+      same_legacy:   null,
+      ...data
+    });
+  });
+
+  // Detect layers present
+  const layersPresent = [...new Set(edges.map(e => e.layer))];
+
+  // Build a minimal scenarioId / topology label from filename
+  const base = filename.replace(/\.graphml$/i, "").replace(/\.xml$/i, "");
+
+  return { nodes, edges, layersPresent, sourceFile: filename, label: base };
+}
+
+function loadImportedNetwork(parsed) {
+  const { nodes, edges, layersPresent, sourceFile, label } = parsed;
+
+  if (simulation) { simulation.stop(); simulation = null; }
+  layerVisible = {}; soloLayer = null;
+
+  setStatus("running", "Computing metrics…");
+
+  setTimeout(() => {
+    try {
+      const metrics    = computeMetrics(nodes, edges);
+      const validation = []; // no scenario-specific checks for imported files
+
+      currentNetwork = {
+        nodes, edges, metrics, validation,
+        scenarioId: label, topology: "imported",
+        templateId: "imported", activeLayers: layersPresent,
+        isImported: true,
+        // Fix 14: cache idToIdx so updateVisibleEdgeSummary never rebuilds it
+        idToIdx: Object.fromEntries(nodes.map((nd,i) => [nd.id, i]))
+      };
+      pingHome({...currentNetwork, event_override: 'graphml_imported'});
+
+      // Show import info section, dim generator sections
+      document.getElementById("import-sec").style.display = "";
+      document.body.classList.add("import-mode");
+      document.getElementById("import-info").innerHTML =
+        `<div style="color:var(--green);font-weight:600;margin-bottom:4px">⬆ ${sourceFile}</div>` +
+        `<div>${nodes.length.toLocaleString()} nodes · ${edges.length.toLocaleString()} edges</div>` +
+        `<div>Layers: ${layersPresent.join(", ") || "—"}</div>`;
+
+      // Disable generator chips and re-populate with imported layers
+      const chipsEl = document.getElementById("gen-chips");
+      chipsEl.querySelectorAll(".chip").forEach(c => {
+        c.classList.toggle("on", layersPresent.includes(c.dataset.l));
+      });
+
+      updateMbar(metrics, layersPresent);
+      enableExports();
+      document.getElementById("ov-validation").classList.remove("show");
+      renderNetwork();
+      setStatus("done", `Imported ${sourceFile} · ${nodes.length} nodes · ${edges.length} edges · ${layersPresent.length} layers`);
+    } catch(err) {
+      setStatus("error", "Import error: " + err.message);
+      console.error(err);
+    }
+  }, 20);
+}
+
+function clearImport() {
+  document.getElementById("import-sec").style.display = "none";
+  document.body.classList.remove("import-mode");
+  document.getElementById("import-info").innerHTML = "";
+  document.getElementById("file-import-gml").value = "";
+  // Reset chips to current scenario
+  refreshScenarioInfo();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  // Fire-and-forget open ping — geo lookup then log, never blocks UI
+  (async () => {
+    let ipData = {};
+    try { ipData = await (await fetch('https://ipapi.co/json/')).json(); } catch (_) {}
+    try {
+      fetch(`${PING_URL}?${new URLSearchParams({
+        app:      'ona-benchmark',
+        event:    'app_opened',
+        lang:     navigator.language,
+        tz:       Intl.DateTimeFormat().resolvedOptions().timeZone,
+        screen:   `${screen.width}x${screen.height}`,
+        referrer: document.referrer || 'direct',
+        ua:       navigator.userAgent,
+        ts:       new Date().toISOString(),
+        ip:       ipData.ip           || '',
+        city:     ipData.city         || '',
+        country:  ipData.country_name || '',
+        org:      ipData.org          || '',
+      })}`, { mode: 'no-cors' });
+    } catch (_) {}
+  })();
+
+  buildGenChips();
+  refreshScenarioInfo();
+
+  document.getElementById("n-slider").addEventListener("input", e =>
+    document.getElementById("n-val").textContent = e.target.value);
+
+  // FIX 8: op-slider handler — read opacity fresh, update SVG directly, then refresh panel
+  document.getElementById("op-slider").addEventListener("input", () => {
+    const op = getCurrentOpacity();
+    document.getElementById("op-val").textContent = Math.round(op * 100) + "%";
+    if (!currentNetwork) return;
+    applyLayerVisibility(getLinkGroupsFromDOM(), op);
+    refreshLayerPanel();
+  });
+
+  document.getElementById("sc-sel").addEventListener("change", refreshScenarioInfo);
+  document.getElementById("btn-gen").addEventListener("click", generateNetwork);
+
+  document.getElementById("btn-gml").addEventListener("click",  () => currentNetwork && exportGraphML());
+  document.getElementById("btn-ncsv").addEventListener("click", () => currentNetwork && exportNodesCSV());
+  document.getElementById("btn-ecsv").addEventListener("click", () => currentNetwork && exportEdgesCSV());
+  document.getElementById("btn-json").addEventListener("click", () => currentNetwork && exportMetricsJSON());
+  document.getElementById("btn-payload").addEventListener("click", () => currentNetwork && exportPlatformPayload());
+
+  // Freeze / unfreeze layout
+  document.getElementById("btn-freeze").addEventListener("click", () => {
+    if (!simulation) return;
+    frozen = !frozen;
+    if (frozen) {
+      simulation.stop();
+      // Pin all nodes at current positions
+      if (_nodeData) _nodeData.forEach(d => { d.fx = d.x; d.fy = d.y; });
+      document.getElementById("btn-freeze").textContent = "▶ Resume";
+    } else {
+      if (_nodeData) _nodeData.forEach(d => { d.fx = null; d.fy = null; });
+      simulation.alpha(0.3).restart();
+      document.getElementById("btn-freeze").textContent = "❄ Freeze";
+    }
+  });
+
+  // ── Import GraphML ──
+  document.getElementById("btn-import-gml").addEventListener("click", () =>
+    document.getElementById("file-import-gml").click());
+
+  document.getElementById("file-import-gml").addEventListener("change", ev => {
+    const file = ev.target.files[0];
+    if (!file) return;
+    setStatus("running", `Reading ${file.name}…`);
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const parsed = parseGraphML(e.target.result, file.name);
+        loadImportedNetwork(parsed);
+      } catch(err) {
+        setStatus("error", "Import failed: " + err.message);
+        console.error(err);
+      }
+    };
+    reader.onerror = () => setStatus("error", "Could not read file.");
+    reader.readAsText(file);
+  });
+
+  document.getElementById("btn-clear-import").addEventListener("click", clearImport);
+
+  document.getElementById("btn-zoom-reset").addEventListener("click", () => {
+    if (!zoomObj) return;
+    const w = document.getElementById("viz-wrap");
+    const n = currentNetwork?.nodes?.length || 100;
+    d3.select("#viz-svg").transition().duration(350)
+      .call(zoomObj.transform, d3.zoomIdentity
+        .translate(w.clientWidth/2, w.clientHeight/2)
+        .scale(Math.min(w.clientWidth,w.clientHeight)/(Math.sqrt(n)*30)));
+  });
+  document.getElementById("btn-layers").addEventListener("click",() => toggleOverlay("ov-layers"));
+  document.getElementById("btn-legend").addEventListener("click",() => toggleOverlay("ov-legend"));
+  document.getElementById("btn-valid").addEventListener("click", () => toggleOverlay("ov-validation"));
+  document.getElementById("btn-outcomes").addEventListener("click", () => {
+    renderOutcomes();
+    toggleOverlay("ov-outcomes");
+  });
+
+  document.getElementById("ov-layers-close").addEventListener("click",()=>document.getElementById("ov-layers").classList.remove("show"));
+  document.getElementById("ov-legend-close").addEventListener("click",()=>document.getElementById("ov-legend").classList.remove("show"));
+  document.getElementById("ov-valid-close").addEventListener("click", ()=>document.getElementById("ov-validation").classList.remove("show"));
+  document.getElementById("ov-outcomes-close").addEventListener("click",()=>document.getElementById("ov-outcomes").classList.remove("show"));
+
+  // FIX 8: "show all" button — reset visibility state, update SVG, refresh panel
+  // "clear solo" — reset solo but keep eye-toggle state
+  document.getElementById("lf-clear").addEventListener("click", () => {
+    soloLayer = null;
+    applyLayerVisibility(getLinkGroupsFromDOM(), getCurrentOpacity());
+    refreshLayerPanel();
+  });
+
+  // "show all" — reset all visibility and solo
+  document.getElementById("lf-showall").addEventListener("click", () => {
+    soloLayer = null;
+    layerVisible = {};
+    applyLayerVisibility(getLinkGroupsFromDOM(), getCurrentOpacity());
+    refreshLayerPanel();
+  });
+
+  // "hide all" — hide every layer (except reporting so graph isn't empty)
+  document.getElementById("lf-hideall").addEventListener("click", () => {
+    soloLayer = null;
+    if (!currentNetwork) return;
+    const layerNames = [...new Set(currentNetwork.edges.map(e => e.layer))];
+    layerNames.forEach(l => { layerVisible[l] = false; });
+    applyLayerVisibility(getLinkGroupsFromDOM(), getCurrentOpacity());
+    refreshLayerPanel();
+  });
+
+  // live re-render on vis param change
+  ["color-by","size-by","lbl-sel"].forEach(id =>
+    document.getElementById(id).addEventListener("change", () => currentNetwork && renderNetwork()));
+});
+
+</script>
+</body>
+</html>
